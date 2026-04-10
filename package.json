@@ -1,0 +1,36 @@
+{
+  "name": "codemon",
+  "displayName": "Codemon",
+  "description": "A tamagotchi that evolves based on your code",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "codemon.open",
+        "title": "Codemon: Open Your Creature"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codemon-sidebar",
+          "title": "Codemon",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "codemon-sidebar": [
+        {
+          "type": "webview",
+          "id": "codemon.panel",
+          "name": "Your Creature"
+        }
+      ]
+    }
+  }
+}
