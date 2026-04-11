@@ -53,7 +53,6 @@ Having certain extensions installed gives your creature visible traits:
 ## Care
 
 - **Feed** — feed your codemon twice per day, 
-(default times 9.30am and 3.30pm)
 (default times 9.30am and 3.30pm, but as long as you feed them a few times, they are fine... and nothing bad will happen...)
 - **Play** — debugging games in your favourite languages
 - **Idle too long** — your creature gets drowsy, then sleeps
