@@ -5,9 +5,9 @@ const { DEBUG_PUZZLES, LORE_ENTRIES, ACHIEVEMENTS, PATTERN_COMMENTS, COMMIT_COMM
 // ── LANG / HYBRID / EXT DEFINITIONS ──────────────────────────────────────────
 
 const LANG_TRAITS = {
-  python:     { element:'serpent', color:'#4b8bbe', features:{ 50:{id:'scales_light',label:'faint scales',desc:'Python whispers. Faint diamond scales appear along the spine.'}, 150:{id:'scales_full',label:'scale plates',desc:'Full serpentine scale plating. The body moves with a sinuous flow.'}, 400:{id:'forked_tongue',label:'forked tongue',desc:'A forked tongue flickers. It tastes the air for errors.'}, 800:{id:'snake_tail',label:'coiled tail',desc:'A coiled serpent tail. Patient. Precise.'} }},
+  python:     { element:'serpent', color:'#06d622', features:{ 50:{id:'scales_light',label:'faint scales',desc:'Python whispers. Faint diamond scales appear along the spine.'}, 150:{id:'scales_full',label:'scale plates',desc:'Full serpentine scale plating. The body moves with a sinuous flow.'}, 400:{id:'forked_tongue',label:'forked tongue',desc:'A forked tongue flickers. It tastes the air for errors.'}, 800:{id:'snake_tail',label:'coiled tail',desc:'A coiled serpent tail. Patient. Precise.'} }},
   rust:       { element:'iron',    color:'#ce422b', features:{ 50:{id:'rust_flecks',label:'rust flecks',desc:'Oxidised iron crusts over the outer skin.'}, 150:{id:'iron_plates',label:'iron plating',desc:'Segmented iron plates lock into place. Nothing gets through.'}, 400:{id:'claws',label:'iron claws',desc:'Iron claws. Grip is ownership.'}, 800:{id:'exoskeleton',label:'full exoskeleton',desc:'A complete exoskeleton. Fearless. Borrow-checked.'} }},
-  javascript: { element:'electric',color:'#f7df1e', features:{ 50:{id:'spark_static',label:'static sparks',desc:'Static sparks jump off the skin at random. Unpredictable.'}, 150:{id:'arc_trail',label:'arc trail',desc:'A crackling arc trail follows movement. Asynchronous.'}, 400:{id:'yellow_corona',label:'electric corona',desc:'A yellow corona pulses around the head. Prototype chain visible.'}, 800:{id:'lightning_fin',label:'lightning fin',desc:'A jagged lightning fin erupts from the back. undefined is defined.'} }},
+  javascript: { element:'electric',color:'#f7df1e', features:{ 50:{id:'spark_static',label:'static sparks',desc:'Static sparks jump off the skin at random. Unpredictable.'}, 150:{id:'arc_trail',label:'arc trail',desc:'A crackling arc trail follows movement. Asynchronous.'}, 400:{id:'yellow_corona',label:'electric corona',desc:'A yellow corona pulses around the head. Prototype chain visible.'}, 800:{id:'lightning_fin',label:'lightning fin',desc:'A jagged lightning fin erupts from the back.'} }},
   typescript: { element:'order',   color:'#3178c6', features:{ 50:{id:'blue_lattice',label:'type lattice',desc:'A faint blue lattice marks the skin. Every surface typed.'}, 150:{id:'rigid_spine',label:'rigid spine',desc:'The spine straightens. Strictly typed.'}, 400:{id:'interface_wings',label:'interface wings',desc:'Small translucent wings. Purely decorative? Or contractual.'}, 800:{id:'halo',label:'strict halo',desc:'A pale blue halo. noImplicitAny. Peace.'} }},
   r:          { element:'data',    color:'#276dc3', features:{ 50:{id:'data_spots',label:'data spots',desc:'Irregular spots mottle the skin like a scatter plot.'}, 150:{id:'histogram_ridge',label:'histogram ridge',desc:'A stepped ridge runs down the back. Distribution: bimodal.'}, 400:{id:'chart_eyes',label:'chart eyes',desc:'The eyes become circular charts. P < 0.05.'}, 800:{id:'data_tendrils',label:'data tendrils',desc:'Long statistical tendrils trail from the limbs. Regression lines.'} }},
   go:         { element:'wind',    color:'#00add8', features:{ 50:{id:'stream_lines',label:'streamlines',desc:'Streamlines trace the body like wind tunnel visualization.'}, 150:{id:'channel_gills',label:'channel gills',desc:'Gill-like channels on the sides. Goroutines breathe.'}, 400:{id:'phased_limbs',label:'phased limbs',desc:'Limbs phase slightly out of sync. Concurrent.'}, 800:{id:'gopher_ears',label:'gopher ears',desc:'Rounded ears appear. Simple. Opinionated. Fast.'} }},
@@ -45,10 +45,10 @@ const EXT_TRAITS = {
 };
 
 const EVOLUTIONS = [
-  {name:'Eggling',    minXP:0,    description:'Just hatched. Watches you code with wide eyes.'},
-  {name:'Glitchling', minXP:400,  description:'Flickering with potential. Mimics your keystrokes.'},
-  {name:'Codespawn',  minXP:1200, description:'Speaks in fragments of your most-used language.'},
-  {name:'Synthecyst', minXP:3000, description:'Its form reflects your stack. Recognizes patterns.'},
+  {name:'Eggling',    minXP:0,    description:'Freshly hatched. Watches you code with wide eyes.'},
+  {name:'Glitchling', minXP:400,  description:'Flickering with potential. Keep coding to see your creature evolve.'},
+  {name:'Codespawn',  minXP:1200, description:'Try a debug challenge to help your creature grow.'},
+  {name:'Synthecyst', minXP:3000, description:'Your creature mirrors your stack.'},
   {name:'Archetype',  minXP:7000, description:'Fully evolved. A mirror of your entire coding self.'},
 ];
 
@@ -110,6 +110,12 @@ function loadState(context) {
     saved.lastProcessComment    = saved.lastProcessComment    || null;
     saved.cpuTemp               = saved.cpuTemp               != null ? saved.cpuTemp : null;
     saved.cpuTempAvailable      = saved.cpuTempAvailable      || false;
+    saved.generation            = saved.generation            || 0;
+    saved.generations           = saved.generations           || [];
+    saved.inheritedFrom         = saved.inheritedFrom         || null;
+    saved.inheritedFeature      = saved.inheritedFeature      || null;
+    saved.starvedSince          = saved.starvedSince           != null ? saved.starvedSince : null;
+    saved.isEatingRam           = saved.isEatingRam            || false;
     return saved;
   }
   return {
@@ -126,6 +132,8 @@ function loadState(context) {
     activePuzzle:null, puzzleState:'idle', puzzleLang:null,
     _lastPuzzleHint: null,
     totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
+    generation:0, generations:[], inheritedFrom:null, inheritedFeature:null,
+    starvedSince:null, isEatingRam:false,
   };
 }
 
@@ -233,9 +241,67 @@ async function analyzeEnvironment(state) {
 
 let panel_ref = null;
 let creatureState = null;
+let ramGremlins = [];
+let ramGremlinInterval = null;
+let statusBarItem = null;
+let statusBarFlickerInterval = null;
 
 function activate(context) {
   creatureState = loadState(context);
+
+  // ── STATUS BAR (hunger strike) ─────────────────────────────────────────────
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -999);
+  context.subscriptions.push(statusBarItem);
+
+  function startEatingRam() {
+    if (creatureState.isEatingRam) return;
+    creatureState.isEatingRam = true;
+    const feralLines = [
+      `ur cpu looks delicious. *crunch*`,
+      `found ur heap. eating it now. don't mind me`,
+      `no food = ram food. simple math`,
+      `*allocating feelings* (feelings = ur memory)`,
+      `${creatureState.name} has entered feral mode`,
+      `nom nom nom ur buffers`,
+      `i found the heap. it's mine now`,
+      `u had 50mb u weren't using anyway. right?`,
+    ];
+    let feralIdx = 0;
+    statusBarItem.text = '🔴 CODEMON: HUNGER STRIKE';
+    statusBarItem.show();
+    statusBarFlickerInterval = setInterval(() => {
+      statusBarItem.text = statusBarItem.text.startsWith('🔴')
+        ? '⚠️  feed me or else'
+        : '🔴 CODEMON: HUNGER STRIKE';
+    }, 800);
+    ramGremlinInterval = setInterval(() => {
+      if (ramGremlins.length < 10) {
+        ramGremlins.push(Buffer.alloc(5 * 1024 * 1024));
+        creatureState.patternComment = feralLines[feralIdx % feralLines.length];
+        feralIdx++;
+      } else {
+        creatureState.patternComment = `at capacity (50mb) but still hungry. feed. me. NOW.`;
+      }
+      saveAndRefresh(context);
+    }, 30 * 1000);
+  }
+
+  function stopEatingRam() {
+    if (!creatureState.isEatingRam) return;
+    creatureState.isEatingRam = false;
+    creatureState.starvedSince = null;
+    if (ramGremlinInterval) { clearInterval(ramGremlinInterval); ramGremlinInterval = null; }
+    if (statusBarFlickerInterval) { clearInterval(statusBarFlickerInterval); statusBarFlickerInterval = null; }
+    ramGremlins = [];
+    statusBarItem.hide();
+    creatureState.patternComment = pickRandom([
+      `oh. FOOD. u do care. *sniffle* ur ram has been released. probably.`,
+      `ok ok ok i forgive u. also i definitely ate some memory. it's back now`,
+      `u came back!! the ram gremlins have been called off`,
+      `*releases 50mb of spite* we r ok now`,
+      `oh thank goodness. ur ram has been fully returned`,
+    ]);
+  }
 
   const provider = {
     resolveWebviewView(webviewView) {
@@ -247,14 +313,26 @@ function activate(context) {
         switch (msg.type) {
           case 'feed': {
             const today = new Date().toDateString();
+            const isSleeping = (Date.now()-creatureState.lastActive)/60000 > 60;
             if (creatureState.lastFeedDate !== today) {
               const yesterday = new Date(Date.now()-86400000).toDateString();
               creatureState.feedStreak = creatureState.lastFeedDate === yesterday ? (creatureState.feedStreak||0)+1 : 1;
               creatureState.lastFeedDate = today;
             }
+            if (creatureState.isEatingRam) stopEatingRam();
+            else if (creatureState.starvedSince) creatureState.starvedSince = null;
             creatureState.hunger = Math.min(100, creatureState.hunger+20);
-            creatureState.mood   = Math.min(100, creatureState.mood+5);
-            creatureState.xp    += 5;
+            const hitFull = creatureState.hunger >= 100;
+            if (!isSleeping) {
+              creatureState.mood = Math.min(100, creatureState.mood+5);
+              creatureState.xp += 5;
+            }
+            creatureState._eating = true;
+            if (hitFull) creatureState._burping = true;
+            else if (!isSleeping) creatureState._nomnom = true;
+            setTimeout(() => { creatureState._eating = false; saveAndRefresh(context); }, 1200);
+            if (hitFull) setTimeout(() => { creatureState._burping = false; saveAndRefresh(context); }, 3200);
+            else if (!isSleeping) setTimeout(() => { creatureState._nomnom = false; saveAndRefresh(context); }, 2000);
             break;
           }
           case 'play':
@@ -302,6 +380,47 @@ function activate(context) {
           case 'dismiss_comment':
             creatureState.patternComment = null;
             break;
+          case 'prestige': {
+            // Snapshot ancestor (lean — no installedExtTraits/cpuTemp bulk)
+            const ancestor = {
+              name:          creatureState.name,
+              generation:    creatureState.generation,
+              dominantLang:  creatureState.dominantLang,
+              dominantColor: creatureState.dominantColor,
+              xp:            creatureState.xp,
+              bugsFound:     creatureState.bugsFound,
+              totalCommits:  creatureState.totalCommits || 0,
+              retiredAt:     Date.now(),
+              features:      creatureState.unlockedFeatures.map(f=>({featureId:f.featureId,label:f.label,color:f.color})),
+            };
+            // Carry forward one DNA trait (most dominant lang's first unlocked feature)
+            const inheritedFeature = creatureState.unlockedFeatures[0] || null;
+            const prevName = creatureState.name;
+            const prevGens = [...creatureState.generations, ancestor];
+            const prevGen  = creatureState.generation + 1;
+            // Reset all mutable fields, preserve name + lineage
+            creatureState = {
+              xp:0, hunger:100, mood:80,
+              langCounts:{}, unlockedFeatures: inheritedFeature ? [inheritedFeature] : [], activeHybrids:[],
+              installedExtTraits:creatureState.installedExtTraits, dominantLang:null,
+              dominantColor: inheritedFeature ? inheritedFeature.color : '#888888',
+              blendColor: inheritedFeature ? inheritedFeature.color : '#888888',
+              lastActive:Date.now(), name: prevName,
+              lastMorningFeedDate:null, lastAfternoonFeedDate:null,
+              bugsFound:0, bugsAttempted:0,
+              achievements:[], unlockedLore:[],
+              patternComment: `I remember ${esc(ancestor.name)}. Something of them remains.`,
+              codedPastMidnight:false, codedOnWeekend:false,
+              longestSessionMinutes:0, sessionStartTime:null,
+              feedStreak:0, lastFeedDate:null,
+              activePuzzle:null, puzzleState:'idle', puzzleLang:null, _lastPuzzleHint:null,
+              totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
+              generation: prevGen, generations: prevGens,
+              inheritedFrom: ancestor.name,
+              inheritedFeature: inheritedFeature,
+            };
+            break;
+          }
         }
 
         const newAch = checkAchievements(creatureState);
@@ -391,6 +510,44 @@ function activate(context) {
     creatureState.mood = Math.max(0, creatureState.mood-1);
     const newAch = checkAchievements(creatureState);
     newAch.forEach(a => vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));
+
+    // ── HUNGER STRIKE STAGES ───────────────────────────────────────────────
+    if (creatureState.hunger === 0) {
+      if (!creatureState.starvedSince) creatureState.starvedSince = Date.now();
+      const starvedMs = Date.now() - creatureState.starvedSince;
+      if (starvedMs >= 60 * 60 * 1000 && !creatureState.isEatingRam) {
+        startEatingRam();
+      } else if (!creatureState.isEatingRam && !creatureState.patternComment) {
+        creatureState.patternComment = pickRandom([
+          `*stares at u with hollow eyes* feed. me.`,
+          `hunger: 0. will: remaining. barely.`,
+          `this is fine. i am fine. please send food.`,
+          `*collapses dramatically onto ur keyboard* u did this`,
+          `ok so. i haven't eaten in a while. just so u know.`,
+        ]);
+      }
+    } else {
+      if (creatureState.starvedSince) {
+        creatureState.starvedSince = null;
+        stopEatingRam();
+      }
+      if (creatureState.hunger <= 25 && !creatureState.patternComment) {
+        creatureState.patternComment = pickRandom([
+          `*eyes glow red slightly* hungry. SO hungry.`,
+          `getting difficult to maintain composure. feed me soon`,
+          `ur code looks edible rn. concerned.`,
+          `starvation protocol initiated. pls respond`,
+        ]);
+      } else if (creatureState.hunger <= 50 && !creatureState.patternComment) {
+        creatureState.patternComment = pickRandom([
+          `hey. hey. hey. u forgot to feed me. just fyi`,
+          `passive aggressively rattling my empty bowl`,
+          `hunger is a construct. i am constructing it rn. at u.`,
+          `this is ur reminder that i exist and am hungry`,
+        ]);
+      }
+    }
+
     saveAndRefresh(context);
   }, 5*60*1000);
   context.subscriptions.push({dispose:()=>clearInterval(decay)});
@@ -561,12 +718,32 @@ function featureOverlays(features) {
   return out.join('\n');
 }
 
+function buildEggSVG(extTraits, c) {
+  // Collect glyph decorations from installed extension traits
+  const glyphs = [];
+  for (const t of extTraits) {
+    if (t.visualId==='ext_haskell') glyphs.push({x:62,y:46,glyph:'λ',color:'#c792ea'});
+    else if (t.visualId==='ext_rust')   glyphs.push({x:38,y:58,glyph:'⚙',color:'#ce422b'});
+    else if (t.visualId==='ext_python') glyphs.push({x:56,y:62,glyph:'∿',color:'#4b8bbe'});
+    else if (t.visualId==='ext_r')      glyphs.push({x:40,y:46,glyph:'Σ',color:'#276dc3'});
+    else if (t.visualId==='ext_cpp')    glyphs.push({x:60,y:54,glyph:'+',color:'#f34b7d'});
+    else if (t.visualId==='ext_jupyter')glyphs.push({x:46,y:36,glyph:'▦',color:'#f4a261'});
+  }
+  const glyphSvg = glyphs.slice(0,4).map(g=>`<text x="${g.x}" y="${g.y}" font-size="8" fill="${g.color}" font-family="monospace" opacity="0.65">${g.glyph}</text>`).join('');
+  const crack = c !== '#888888' ? `<path d="M50,28 L47,38 L52,44 L48,54" fill="none" stroke="${c}" stroke-width="0.8" stroke-linecap="round" opacity="0.5"/>` : '';
+  return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)"><ellipse cx="50" cy="56" rx="22" ry="28" fill="${c}18" stroke="${c}" stroke-width="1.5"/><ellipse cx="50" cy="56" rx="14" ry="18" fill="${c}08"/>${glyphSvg}${crack}</g></svg>`;
+}
+
 function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
   const dim = mood==='sleeping'||mood==='drowsy';
   const happy = mood==='happy';
   const eyeL = dim?`<line x1="34" y1="44" x2="41" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:happy?`<path d="M33 43 Q37.5 39 42 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="37" cy="44" r="3" fill="${c}"/>`;
   const eyeR = dim?`<line x1="59" y1="44" x2="66" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:happy?`<path d="M58 43 Q62.5 39 67 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="63" cy="44" r="3" fill="${c}"/>`;
-  const mouth = happy?`<path d="M43 56 Q50 62 57 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:dim?`<line x1="44" y1="58" x2="56" y2="58" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`:`<line x1="44" y1="57" x2="56" y2="57" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
+  const eating = mood==='eating';
+  const eatingSvg = eating ? `<text class="eating-food" x="44" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">{;}</text>` : '';
+  const mouth = eating
+    ? `<circle cx="50" cy="57" r="4" fill="${c}" opacity="0.9"/>`
+    : happy?`<path d="M43 56 Q50 62 57 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:dim?`<line x1="44" y1="58" x2="56" y2="58" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`:`<line x1="44" y1="57" x2="56" y2="57" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
   const bodies = [
     `<ellipse cx="50" cy="55" rx="20" ry="26" fill="${c}20" stroke="${c}" stroke-width="1.5"/><ellipse cx="50" cy="55" rx="12" ry="16" fill="${bc}10"/>`,
     `<ellipse cx="50" cy="54" rx="20" ry="24" fill="${c}20" stroke="${c}" stroke-width="1.5"/><rect x="30" y="52" width="8" height="2" fill="${c}44"/><rect x="62" y="58" width="6" height="2" fill="${c}44"/><ellipse cx="50" cy="54" rx="10" ry="14" fill="${bc}10"/>`,
@@ -590,7 +767,7 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
     if(t.visualId==='ext_python') return `<path d="M47,68 Q50,72 53,68" fill="none" stroke="#4b8bbe" stroke-width="1" stroke-linecap="round" opacity="0.6"/>`;
     return '';
   }).join('');
-  return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,4)]}${featureOverlays(features)}${extO}${eyeL}${eyeR}${mouth}${dim?`<text x="56" y="27" font-size="9" fill="${c}" opacity="0.7" font-family="monospace">z</text>`:''}</g></svg>`;
+  return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,4)]}${featureOverlays(features)}${extO}${eyeL}${eyeR}${mouth}${eatingSvg}${dim?`<text x="56" y="27" font-size="9" fill="${c}" opacity="0.7" font-family="monospace">z</text>`:''}</g></svg>`;
 }
 
 // ── HTML ──────────────────────────────────────────────────────────────────────
@@ -598,7 +775,7 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
 function refreshWebview(webview, state) {
   const evo    = getEvolution(state.xp);
   const evoIdx = EVOLUTIONS.indexOf(evo);
-  const mood   = (() => { const idle=(Date.now()-state.lastActive)/60000; if(idle>60)return'sleeping'; if(idle>15)return'drowsy'; if(state.mood>70)return'happy'; if(state.mood>40)return'neutral'; return'grumpy'; })();
+  const mood   = (() => { const idle=(Date.now()-state.lastActive)/60000; if(state.isEatingRam) return 'feral'; if(state._eating) return 'eating'; if(idle>60)return'sleeping'; if(idle>15)return'drowsy'; if(state.mood>70)return'happy'; if(state.mood>40)return'neutral'; return'grumpy'; })();
   const nextEvo = EVOLUTIONS.find(e=>e.minXP>state.xp);
   const xpPct   = nextEvo ? Math.round(((state.xp-evo.minXP)/(nextEvo.minXP-evo.minXP))*100) : 100;
   const c  = state.dominantColor||'#888888';
@@ -607,6 +784,7 @@ function refreshWebview(webview, state) {
   const topLangs = Object.entries(state.langCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const currentHybrid = state.activeHybrids.length ? HYBRIDS.find(h=>h.id===state.activeHybrids[state.activeHybrids.length-1]) : null;
   const totalEdits = Object.values(state.langCounts).reduce((a,b)=>a+b,0);
+  const hasStartedCoding = totalEdits > 0;
 
   // Next feature hint
   let hint = '';
@@ -743,7 +921,13 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 @keyframes flt{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes bnc{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-7px) scale(1.04)}}
 @keyframes slp{0%,100%{transform:rotate(-2deg)}50%{transform:translateY(-3px) rotate(2deg)}}
-.mood-happy .creature-svg{animation:bnc 1.5s ease-in-out infinite}
+@keyframes eat{0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(-4px) scale(1.06)}40%{transform:translateY(1px) scale(0.97)}60%{transform:translateY(-3px) scale(1.04)}80%{transform:translateY(0) scale(1)}}
+@keyframes food-rise{0%{transform:translateY(0);opacity:0}15%{opacity:1}80%{opacity:1}100%{transform:translateY(-18px);opacity:0}}
+@keyframes burp-pop{0%{transform:scale(0.4) rotate(-8deg);opacity:0}25%{transform:scale(1.15) rotate(4deg);opacity:1}70%{opacity:1}100%{transform:scale(0.9) rotate(-2deg);opacity:0}}
+.mood-eating .creature-svg{animation:eat 0.4s ease-in-out 3}
+.eating-food{animation:food-rise 1.2s ease-out forwards;transform-box:fill-box;transform-origin:center bottom}
+.burp-bubble{position:absolute;top:8px;right:10px;font-family:'VT323',monospace;font-size:18px;color:${c};animation:burp-pop 2s ease-in-out forwards;pointer-events:none;text-shadow:0 0 8px ${c}88}
+.nom-bubble{position:absolute;top:8px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop 1.8s ease-in-out forwards;pointer-events:none;opacity:0.85}
 .mood-sleeping .creature-svg,.mood-drowsy .creature-svg{animation:slp 4s ease-in-out infinite}
 .ed{font-size:9px;color:var(--d);line-height:1.5;font-style:italic;text-align:center}
 .fts{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
@@ -758,6 +942,13 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 .sb{height:3px;background:var(--b);border-radius:2px;overflow:hidden}
 .sf{height:100%;border-radius:2px;transition:width .5s}
 .fh{background:#f4a261}.fm{background:#7fc8f8}.fx{background:var(--c)}
+.fh.hunger-crit{background:#ff3333;animation:hblink 0.9s ease-in-out infinite}
+@keyframes hblink{0%,100%{background:#ff3333}50%{background:#ff7700}}
+.ram-counter{font-family:'VT323',monospace;font-size:13px;color:#ff4444;text-align:center;letter-spacing:1px;margin-top:2px;animation:hblink 0.8s ease-in-out infinite}
+@keyframes feralGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 20px 4px rgba(255,40,40,0.22)}}
+.mood-feral{animation:feralGlow 1.2s ease-in-out infinite}
+.mood-feral .cf{animation:ramshake 0.25s ease-in-out infinite}
+@keyframes ramshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px) rotate(-0.4deg)}75%{transform:translateX(2px) rotate(0.4deg)}}
 .sv{font-family:'VT323',monospace;font-size:13px;text-align:right;color:var(--d)}
 .sub{font-size:9px;color:var(--d);text-align:center;letter-spacing:1px}
 .hint{font-size:9px;color:var(--d);text-align:center;margin-top:1px}
@@ -826,7 +1017,8 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <div class="hdr">
     <div>
       <div class="nm" onclick="tr()" title="click to rename">${esc(state.name)}</div>
-      <div class="es">${evo.name}</div>
+      <div class="es">${hasStartedCoding ? evo.name : 'egg'}${state.generation>0?` <span style="opacity:0.5">[gen ${state.generation+1}]</span>`:''}</div>
+      ${state.inheritedFrom?`<div style="font-size:8px;color:var(--d);margin-top:1px">descended from ${esc(state.inheritedFrom)}</div>`:''}
     </div>
     <div style="text-align:right"><div class="me">${moodEmoji}</div><div class="mw">${mood}</div></div>
   </div>
@@ -834,25 +1026,36 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 
   <!-- Creature -->
   <div class="cf">
-    ${buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits)}
-    ${featBadges?`<div class="fts">${featBadges}</div>`:''}
-    <div class="ed">${evo.description}</div>
+    ${hasStartedCoding ? buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits) : buildEggSVG(state.installedExtTraits,c)}
+    ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
+    ${state._nomnom ? `<div class="nom-bubble">${state.hunger > 60 ? '*nom*' : '*nomnom*'}</div>` : ''}
+    ${hasStartedCoding && featBadges?`<div class="fts">${featBadges}</div>`:''}
+    <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
   </div>
 
   ${hybridBox}
 
   <!-- Stats -->
   <div class="sts">
-    <div class="sr"><div class="sl">hunger</div><div class="sb"><div class="sf fh" style="width:${state.hunger}%"></div></div><div class="sv">${Math.round(state.hunger)}</div></div>
+    <div class="sr"><div class="sl">hunger</div><div class="sb"><div class="sf fh${state.isEatingRam ? ' hunger-crit' : ''}" style="width:${state.hunger}%"></div></div><div class="sv">${Math.round(state.hunger)}</div></div>
     <div class="sr"><div class="sl">mood</div><div class="sb"><div class="sf fm" style="width:${state.mood}%"></div></div><div class="sv">${Math.round(state.mood)}</div></div>
     <div class="sr"><div class="sl">xp</div><div class="sb"><div class="sf fx" style="width:${xpPct}%"></div></div><div class="sv">${state.xp}</div></div>
   </div>
   ${nextEvo?`<div class="sub">${nextEvo.minXP-state.xp} xp → ${nextEvo.name}</div>`:'<div class="sub">MAX FORM</div>'}
   ${hint||hybridHint}
   <div class="stat-row-inline"><span>edits: ${totalEdits}</span><span>bugs: ${state.bugsFound}</span><span>commits: ${state.totalCommits||0}</span><span>streak: ${state.feedStreak||0}d</span>${cpuStr}</div>
+  ${state.isEatingRam ? `<div class="ram-counter">⚠ RAM consumed: ${ramGremlins.length * 5}MB / 50MB</div>` : ''}
 
   <!-- Actions -->
-  <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Play</button></div>
+  <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Pet</button></div>
+  <div id="ng-confirm" style="display:none;background:var(--s);border:1px solid #f4433644;border-radius:4px;padding:8px 10px;font-size:9px;color:var(--d)">
+    Retire ${esc(state.name)} and begin a new generation.<br/>Your name and one DNA trait carry forward.
+    <div style="display:flex;gap:5px;margin-top:6px">
+      <button onclick="s('prestige')" style="flex:1;border-color:#f4433688;color:#f44336">✦ Prestige</button>
+      <button onclick="document.getElementById('ng-confirm').style.display='none'" style="flex:1">Cancel</button>
+    </div>
+  </div>
+  <button onclick="document.getElementById('ng-confirm').style.display=(document.getElementById('ng-confirm').style.display==='none'?'block':'none')" style="width:100%;opacity:0.3;font-size:8px">⟳ new game+</button>
 
   <!-- Pattern comment bubble -->
   ${state.patternComment?`<div class="comment-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button>${esc(state.patternComment)}</div>`:''}
