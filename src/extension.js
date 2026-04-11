@@ -75,7 +75,7 @@ function blendColors(hexes) {
 function pickRandom(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
 
 function getPuzzleForState(state) {
-  const lang = state.dominantLang;
+  const lang = state.puzzleLang || state.dominantLang;
   const pool = DEBUG_PUZZLES[lang] || DEBUG_PUZZLES.default;
   // Avoid repeating last puzzle (compare by hint as stable key)
   const available = pool.filter(p => p.hint !== state._lastPuzzleHint);
@@ -105,6 +105,7 @@ function loadState(context) {
     saved.lastFeedDate          = saved.lastFeedDate          || null;
     saved.activePuzzle          = saved.activePuzzle          || null;
     saved.puzzleState           = saved.puzzleState           || 'idle'; // idle | active | solved | failed
+    saved.puzzleLang            = saved.puzzleLang            || null;  // null = auto (dominant lang)
     saved.totalCommits          = saved.totalCommits          || 0;
     saved.lastProcessComment    = saved.lastProcessComment    || null;
     saved.cpuTemp               = saved.cpuTemp               != null ? saved.cpuTemp : null;
@@ -122,7 +123,7 @@ function loadState(context) {
     codedPastMidnight:false, codedOnWeekend:false,
     longestSessionMinutes:0, sessionStartTime:null,
     feedStreak:0, lastFeedDate:null,
-    activePuzzle:null, puzzleState:'idle',
+    activePuzzle:null, puzzleState:'idle', puzzleLang:null,
     _lastPuzzleHint: null,
     totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
   };
@@ -274,7 +275,7 @@ function activate(context) {
           case 'guess_bug': {
             const p = creatureState.activePuzzle;
             if (!p) break;
-            if (msg.lineIndex === p.bugLine) {
+            if (msg.value === p.bugLine) {
               creatureState.puzzleState = 'solved';
               creatureState.bugsFound++;
               creatureState.xp   += p.xp;
@@ -294,6 +295,9 @@ function activate(context) {
           case 'dismiss_puzzle':
             creatureState.activePuzzle = null;
             creatureState.puzzleState  = 'idle';
+            break;
+          case 'set_puzzle_lang':
+            creatureState.puzzleLang = msg.value || null;
             break;
           case 'dismiss_comment':
             creatureState.patternComment = null;
@@ -628,8 +632,17 @@ function refreshWebview(webview, state) {
 
   // ── PUZZLE HTML ──
   let puzzleHtml = '';
+  const puzzleLangOptions = ['auto','python','javascript','rust','haskell','r','lua','default'];
+  const puzzleLangShort  = {'auto':'AUTO','python':'PY','javascript':'JS','rust':'RS','haskell':'HS','r':'R','lua':'LUA','default':'CS'};
+  const selectedPuzzleLang = state.puzzleLang || 'auto';
+  const langSelectorHtml = `<div style="margin-top:6px">
+    <div style="font-size:9px;color:var(--d);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">language:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:3px">
+      ${puzzleLangOptions.map(k=>{const active=k===selectedPuzzleLang;return `<button onclick="s('set_puzzle_lang','${k==='auto'?'':k}')" style="padding:2px 6px;font-size:9px;${active?`background:${c};color:#fff;border-color:${c};`:'opacity:0.55;'}">${puzzleLangShort[k]||k}</button>`;}).join('')}
+    </div>
+  </div>`;
   if (state.puzzleState === 'idle') {
-    puzzleHtml = `<div class="section-box"><div class="sec-title">debug challenge</div><div class="puzzle-prompt">I have a challenge for you. Find the bug, earn XP and lore.</div><button onclick="s('start_puzzle')" style="width:100%;margin-top:6px">◈ Start Challenge</button></div>`;
+    puzzleHtml = `<div class="section-box"><div class="sec-title">debug challenge</div><div class="puzzle-prompt">I have a challenge for you. Find the bug, earn XP and lore.</div>${langSelectorHtml}<button onclick="s('start_puzzle')" style="width:100%;margin-top:6px">◈ Start Challenge</button></div>`;
   } else if (state.puzzleState === 'active' && state.activePuzzle) {
     const p = state.activePuzzle;
     const lines = p.lines.map((line, i) =>
@@ -638,10 +651,11 @@ function refreshWebview(webview, state) {
         <code>${esc(line)}</code>
       </div>`
     ).join('');
-    puzzleHtml = `<div class="section-box"><div class="sec-title">debug challenge <span style="color:${c}">${state.dominantLang||'cs'}</span></div>
+    puzzleHtml = `<div class="section-box"><div class="sec-title">debug challenge <span style="color:${c}">${state.puzzleLang||state.dominantLang||'cs'}</span></div>
       <div class="puzzle-hint">I sense something wrong here. Which line is broken?</div>
       <div class="code-block">${lines}</div>
       <div class="hint" style="margin-top:4px">hint: ${esc(p.hint)}</div>
+      <button onclick="s('dismiss_puzzle')" style="width:100%;margin-top:6px;opacity:0.5">✕ Give Up</button>
     </div>`;
   } else if (state.puzzleState === 'solved' && state.activePuzzle) {
     const p = state.activePuzzle;
@@ -713,7 +727,7 @@ function refreshWebview(webview, state) {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--c:${c};--bc:${bc};--bg:#090910;--s:#0e0e1a;--b:#1c1c2a;--t:#b0b0c8;--d:#454560}
+:root{--c:${c};--bc:${bc};--bg:var(--vscode-sideBar-background,#090910);--s:var(--vscode-input-background,#0e0e1a);--b:var(--vscode-panel-border,var(--vscode-widget-border,#1c1c2a));--t:var(--vscode-foreground,#b0b0c8);--d:var(--vscode-descriptionForeground,#454560)}
 body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font-size:11px;overflow-x:hidden}
 .w{padding:11px;display:flex;flex-direction:column;gap:9px}
 /* Header */
