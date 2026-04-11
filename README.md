@@ -1,6 +1,8 @@
 # Codemon 🦎
 
-A Tamagotchi-style creature that **evolves based on how you code**.
+A sidebar virtual pet that demands your commit-ment!
+
+ **evolves based on how you code**.
 
 ## How It Works
 
@@ -50,8 +52,9 @@ Having certain extensions installed gives your creature visible traits:
 
 ## Care
 
-- **Feed** — keeps hunger up, small XP boost
-- **Play** — boosts mood
+- **Feed** — feed your codemon twice per day, 
+(default times 9.30am and 3.30pm, but as long as you feed them a few times, they are fine)
+- **Play** — debugging games in your favourite languages
 - **Idle too long** — your creature gets drowsy, then sleeps
 
 ## Installation
@@ -62,5 +65,6 @@ Having certain extensions installed gives your creature visible traits:
 2. Reload VS Code
 3. Look for the Codemon icon in the Activity Bar (left sidebar)
 
-No build step required — pure JS.
+No build step required, pure JS.
+
 
