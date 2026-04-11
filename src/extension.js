@@ -381,6 +381,8 @@ function activate(context) {
             creatureState.patternComment = null;
             break;
           case 'prestige': {
+            // Stop feral mode before reset so intervals are cleared cleanly
+            if (creatureState.isEatingRam) stopEatingRam();
             // Snapshot ancestor (lean — no installedExtTraits/cpuTemp bulk)
             const ancestor = {
               name:          creatureState.name,
@@ -409,7 +411,7 @@ function activate(context) {
               lastMorningFeedDate:null, lastAfternoonFeedDate:null,
               bugsFound:0, bugsAttempted:0,
               achievements:[], unlockedLore:[],
-              patternComment: `I remember ${esc(ancestor.name)}. Something of them remains.`,
+              patternComment: `I remember ${ancestor.name}. Something of them remains.`,
               codedPastMidnight:false, codedOnWeekend:false,
               longestSessionMinutes:0, sessionStartTime:null,
               feedStreak:0, lastFeedDate:null,
@@ -418,6 +420,7 @@ function activate(context) {
               generation: prevGen, generations: prevGens,
               inheritedFrom: ancestor.name,
               inheritedFeature: inheritedFeature,
+              isEatingRam: false, starvedSince: null,
             };
             break;
           }
@@ -1106,5 +1109,9 @@ document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter'
 </script></body></html>`;
 }
 
-function deactivate() {}
+function deactivate() {
+  if (ramGremlinInterval)      { clearInterval(ramGremlinInterval);      ramGremlinInterval      = null; }
+  if (statusBarFlickerInterval) { clearInterval(statusBarFlickerInterval); statusBarFlickerInterval = null; }
+  ramGremlins = [];
+}
 module.exports = { activate, deactivate };
