@@ -8,11 +8,14 @@ A sidebar virtual pet that demands your commit-ment!
 
 Your Codemon lives in the VS Code sidebar. 
 
-- **When it hatches its type will be based on the extensions you have installed** — each extension adds a physical trait (Rust Analyzer → armored shell, GitLens → ancient eyes, Copilot → twin pupils, etc.)
+- **When it hatches its type will be based on the extensions you have installed**
+each extension adds a physical trait (Rust Analyzer → armored shell, GitLens → ancient eyes, Copilot → twin pupils, etc.)
 
 It evolves based on:
-- **How much you code** — editing files earns XP and drives evolution- 
-- **What languages you write** — its element, color, and personality shift toward your dominant language
+- **How much you code** 
+editing files earns XP and drives evolution
+- **What languages you write**
+its element, color, and personality shift toward your dominant language
 
 
 ## Evolution Stages
@@ -23,7 +26,8 @@ It evolves based on:
 | Glitchling | 100 | Flickering with potential |
 | Codespawn | 300 | Speaks your most-used language |
 | Synthecyst | 700 | Form reflects your stack |
-| Archetype | 1500 | A mirror of your coding self |
+| Archetype | 7000 | Elements like wings and claws added, depending on your languages |
+| Paradigm | 11,000 | A mirror of your coding self |
 
 ## Creature Color & Element
 
@@ -42,7 +46,7 @@ The creature's color and element tracks your **most-edited language**:
 
 Having certain extensions installed gives your creature visible traits:
 
-- `rust-analyzer` → **armored shell**
+- `rust-analyzer` → **crab legs**
 - `prettier` → **groomed sheen**
 - `GitLens` → **ancient eyes**
 - `GitHub Copilot` → **twin pupils**
