@@ -11,7 +11,7 @@ const LANG_TRAITS = {
   typescript: { element:'order',   color:'#3178c6', features:{ 50:{id:'blue_lattice',label:'type lattice',desc:'A faint blue lattice marks the skin. Every surface typed.'}, 150:{id:'rigid_spine',label:'rigid spine',desc:'The spine straightens. Strictly typed.'}, 400:{id:'interface_wings',label:'interface wings',desc:'Small translucent wings. Purely decorative? Or contractual.'}, 800:{id:'halo',label:'strict halo',desc:'A pale blue halo. noImplicitAny. Peace.'} }},
   r:          { element:'data',    color:'#276dc3', features:{ 50:{id:'data_spots',label:'data spots',desc:'Irregular spots mottle the skin like a scatter plot.'}, 150:{id:'histogram_ridge',label:'histogram ridge',desc:'A stepped ridge runs down the back. Distribution: bimodal.'}, 400:{id:'chart_eyes',label:'chart eyes',desc:'The eyes become circular charts. P < 0.05.'}, 800:{id:'data_tendrils',label:'data tendrils',desc:'Long statistical tendrils trail from the limbs. Regression lines.'} }},
   go:         { element:'wind',    color:'#00add8', features:{ 50:{id:'stream_lines',label:'streamlines',desc:'Streamlines trace the body like wind tunnel visualization.'}, 150:{id:'channel_gills',label:'channel gills',desc:'Gill-like channels on the sides. Goroutines breathe.'}, 400:{id:'phased_limbs',label:'phased limbs',desc:'Limbs phase slightly out of sync. Concurrent.'}, 800:{id:'gopher_ears',label:'gopher ears',desc:'Rounded ears appear. Simple. Opinionated. Fast.'} }},
-  haskell:    { element:'void',    color:'#5e5086', features:{ 50:{id:'void_shimmer',label:'void shimmer',desc:'The surface shimmers between states. Lazy evaluation.'}, 150:{id:'monad_rings',label:'monad rings',desc:'Rings orbit the body slowly. Functors. Monads.'}, 400:{id:'lambda_mark',label:'lambda mark',desc:'A lambda symbol is burned into the forehead.'}, 800:{id:'category_wings',label:'category wings',desc:'Wings that fold through higher dimensions. Pure.'} }},
+  haskell:    { element:'void',    color:'#9102ce', features:{ 50:{id:'void_shimmer',label:'void shimmer',desc:'The surface shimmers between states. Lazy evaluation.'}, 150:{id:'monad_rings',label:'monad rings',desc:'Rings orbit the body slowly. Functors. Monads.'}, 400:{id:'lambda_mark',label:'lambda mark',desc:'A lambda symbol is burned into the forehead.'}, 800:{id:'category_wings',label:'category wings',desc:'Wings that fold through higher dimensions. Pure.'} }},
   cpp:        { element:'fire',    color:'#f34b7d', features:{ 50:{id:'heat_shimmer',label:'heat shimmer',desc:'Heat distortion around the body. Undefined behavior radiates.'}, 150:{id:'pointer_horns',label:'pointer horns',desc:'Small horns like pointer arrows. Memory is yours to manage.'}, 400:{id:'flame_mane',label:'flame mane',desc:'A mane of low fire. Segfault-born. Veteran.'}, 800:{id:'template_tail',label:'template tail',desc:'A tail that branches into multiple types. Generic.'} }},
   lua:        { element:'moon',    color:'#7b86b8', features:{ 50:{id:'lunar_glow',label:'lunar glow',desc:'A faint lunar glow. Embedded everywhere, seen nowhere.'}, 150:{id:'table_shell',label:'table shell',desc:'A shell of interlocking tables. The only data structure needed.'}, 400:{id:'metatail',label:'metatail',desc:'A tail with metamethods. Indexing is recursive.'}, 800:{id:'coroutine_fins',label:'coroutine fins',desc:'Fins that yield and resume independently.'} }},
   ruby:       { element:'gem',     color:'#cc342d', features:{ 50:{id:'gem_flecks',label:'gem flecks',desc:'Crystalline gem flecks catch the light. Matz is nice.'}, 150:{id:'ruby_spine',label:'ruby spine',desc:'A spine of deep red rubies. Convention over configuration.'}, 400:{id:'facet_eyes',label:'facet eyes',desc:'Faceted gem eyes. Everything is an object. Everything.'}, 800:{id:'crystal_wings',label:'crystal wings',desc:'Crystalline wings. Beautiful. Slow when needed. Fast enough.'} }},
@@ -91,6 +91,18 @@ function loadState(context) {
   const saved = context.globalState.get('codemonState_v4')
     || (() => { const v3 = context.globalState.get('codemonState_v3'); return v3 ? { ...v3, _migratedFromV3: true } : null; })();
   if (saved) {
+    saved.xp                    = Number.isFinite(saved.xp) ? saved.xp : 0;
+    saved.hunger                = Number.isFinite(saved.hunger) ? saved.hunger : 100;
+    saved.mood                  = Number.isFinite(saved.mood) ? saved.mood : 80;
+    saved.langCounts            = (saved.langCounts && typeof saved.langCounts === 'object') ? saved.langCounts : {};
+    saved.unlockedFeatures      = Array.isArray(saved.unlockedFeatures) ? saved.unlockedFeatures : [];
+    saved.activeHybrids         = Array.isArray(saved.activeHybrids) ? saved.activeHybrids : [];
+    saved.installedExtTraits    = Array.isArray(saved.installedExtTraits) ? saved.installedExtTraits : [];
+    saved.dominantLang          = saved.dominantLang || null;
+    saved.dominantColor         = saved.dominantColor || '#888888';
+    saved.blendColor            = saved.blendColor || saved.dominantColor || '#888888';
+    saved.lastActive            = Number.isFinite(saved.lastActive) ? saved.lastActive : Date.now();
+    saved.name                  = (typeof saved.name === 'string' && saved.name.trim()) ? saved.name : 'Unnamed';
     saved.lastMorningFeedDate   = saved.lastMorningFeedDate   || null;
     saved.lastAfternoonFeedDate = saved.lastAfternoonFeedDate || null;
     saved.bugsFound             = saved.bugsFound             || 0;
@@ -117,6 +129,7 @@ function loadState(context) {
     saved.inheritedFeature      = saved.inheritedFeature      || null;
     saved.starvedSince          = saved.starvedSince           != null ? saved.starvedSince : null;
     saved.isEatingRam           = saved.isEatingRam            || false;
+    saved._playful              = false;
     return saved;
   }
   return {
@@ -134,7 +147,7 @@ function loadState(context) {
     _lastPuzzleHint: null,
     totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
     generation:0, generations:[], inheritedFrom:null, inheritedFeature:null,
-    starvedSince:null, isEatingRam:false,
+    starvedSince:null, isEatingRam:false, _playful:false,
   };
 }
 
@@ -341,6 +354,16 @@ function activate(context) {
             creatureState.hunger = Math.max(0,   creatureState.hunger-5);
             creatureState.xp    += 3;
             break;
+          case 'game_catch': {
+            const win = msg.value && msg.value.result === 'win';
+            creatureState._playful = true;
+            creatureState.mood   = Math.min(100, creatureState.mood + (win ? 20 : 8));
+            creatureState.hunger = Math.max(0,   creatureState.hunger - 8);
+            creatureState.xp    += win ? 12 : 3;
+            saveAndRefresh(context);
+            setTimeout(() => { creatureState._playful = false; saveAndRefresh(context); }, 8000);
+            break;
+          }
           case 'rename':
             creatureState.name = (msg.value||'').slice(0,20) || creatureState.name;
             break;
@@ -421,7 +444,7 @@ function activate(context) {
               generation: prevGen, generations: prevGens,
               inheritedFrom: ancestor.name,
               inheritedFeature: inheritedFeature,
-              isEatingRam: false, starvedSince: null,
+              isEatingRam: false, starvedSince: null, _playful:false,
             };
             break;
           }
@@ -672,7 +695,10 @@ function activate(context) {
 
 function saveAndRefresh(context) {
   context.globalState.update('codemonState_v4', creatureState);
-  if (panel_ref) refreshWebview(panel_ref.webview, creatureState);
+  if (panel_ref) {
+    try { refreshWebview(panel_ref.webview, creatureState); }
+    catch (e) { console.error('[codemon] refreshWebview error:', e); }
+  }
 }
 
 // ── SVG FEATURE OVERLAYS ──────────────────────────────────────────────────────
@@ -741,13 +767,14 @@ function buildEggSVG(extTraits, c) {
 function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
   const dim = mood==='sleeping'||mood==='drowsy';
   const happy = mood==='happy';
-  const eyeL = dim?`<line x1="34" y1="44" x2="41" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:happy?`<path d="M33 43 Q37.5 39 42 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="37" cy="44" r="3" fill="${c}"/>`;
-  const eyeR = dim?`<line x1="59" y1="44" x2="66" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:happy?`<path d="M58 43 Q62.5 39 67 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="63" cy="44" r="3" fill="${c}"/>`;
+  const playful = mood==='playful';
+  const eyeL = dim?`<line x1="34" y1="44" x2="41" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:playful?`<circle cx="37" cy="43" r="4" fill="${c}"/><circle cx="38.5" cy="41.5" r="1.2" fill="white"/>`:happy?`<path d="M33 43 Q37.5 39 42 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="37" cy="44" r="3" fill="${c}"/>`;
+  const eyeR = dim?`<line x1="59" y1="44" x2="66" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:playful?`<circle cx="63" cy="43" r="4" fill="${c}"/><circle cx="64.5" cy="41.5" r="1.2" fill="white"/>`:happy?`<path d="M58 43 Q62.5 39 67 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="63" cy="44" r="3" fill="${c}"/>`;
   const eating = mood==='eating';
   const eatingSvg = eating ? `<text class="eating-food" x="44" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">{;}</text>` : '';
   const mouth = eating
     ? `<circle cx="50" cy="57" r="4" fill="${c}" opacity="0.9"/>`
-    : happy?`<path d="M43 56 Q50 62 57 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:dim?`<line x1="44" y1="58" x2="56" y2="58" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`:`<line x1="44" y1="57" x2="56" y2="57" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
+    : playful?`<path d="M41 55 Q50 64 59 55" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`:happy?`<path d="M43 56 Q50 62 57 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:dim?`<line x1="44" y1="58" x2="56" y2="58" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`:`<line x1="44" y1="57" x2="56" y2="57" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
   const bodies = [
     `<ellipse cx="50" cy="55" rx="20" ry="26" fill="${c}20" stroke="${c}" stroke-width="1.5"/><ellipse cx="50" cy="55" rx="12" ry="16" fill="${bc}10"/>`,
     `<ellipse cx="50" cy="54" rx="20" ry="24" fill="${c}20" stroke="${c}" stroke-width="1.5"/><rect x="30" y="52" width="8" height="2" fill="${c}44"/><rect x="62" y="58" width="6" height="2" fill="${c}44"/><ellipse cx="50" cy="54" rx="10" ry="14" fill="${bc}10"/>`,
@@ -780,12 +807,12 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
 function refreshWebview(webview, state) {
   const evo    = getEvolution(state.xp);
   const evoIdx = EVOLUTIONS.indexOf(evo);
-  const mood   = (() => { const idle=(Date.now()-state.lastActive)/60000; if(state.isEatingRam) return 'feral'; if(state._eating) return 'eating'; if(idle>60)return'sleeping'; if(idle>15)return'drowsy'; if(state.mood>70)return'happy'; if(state.mood>40)return'neutral'; return'grumpy'; })();
+  const mood   = (() => { const idle=(Date.now()-state.lastActive)/60000; if(state.isEatingRam) return 'feral'; if(state._eating) return 'eating'; if(state._playful) return 'playful'; if(idle>60)return'sleeping'; if(idle>15)return'drowsy'; if(state.mood>70)return'happy'; if(state.mood>40)return'neutral'; return'grumpy'; })();
   const nextEvo = EVOLUTIONS.find(e=>e.minXP>state.xp);
   const xpPct   = nextEvo ? Math.round(((state.xp-evo.minXP)/(nextEvo.minXP-evo.minXP))*100) : 100;
   const c  = state.dominantColor||'#888888';
   const bc = state.blendColor||c;
-  const moodEmoji = {happy:'◉',neutral:'◎',grumpy:'◌',drowsy:'◍',sleeping:'⊙'}[mood]||'◎';
+  const moodEmoji = {happy:'◉',neutral:'◎',grumpy:'◌',drowsy:'◍',sleeping:'⊙',playful:'◈',feral:'◆',eating:'●'}[mood]||'◎';
   const topLangs = Object.entries(state.langCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const currentHybrid = state.activeHybrids.length ? HYBRIDS.find(h=>h.id===state.activeHybrids[state.activeHybrids.length-1]) : null;
   const totalEdits = Object.values(state.langCounts).reduce((a,b)=>a+b,0);
@@ -899,7 +926,8 @@ function refreshWebview(webview, state) {
     : '<div class="hint" style="text-align:center">Unlock lore by coding and finding bugs.</div>';
 
   // ── STATS ──
-  const langPips = topLangs.map(([l,cnt])=>{const lt=LANG_TRAITS[l]||{color:'#888'};return `<div class="pip" style="background:${lt.color}" title="${esc(l)}: ${cnt} edits"><span>${l.slice(0,2).toUpperCase()}</span></div>`;}).join('');
+  const LANG_ABBR = {javascript:'JS',typescript:'TS',python:'PY',rust:'RS',go:'GO',haskell:'HS',cpp:'C++',lua:'LU',ruby:'RB',r:'R',rmd:'R',css:'CSS',scss:'CSS',html:'HTM',shellscript:'SH',bash:'SH',powershell:'PS',java:'JV',csharp:'C#',php:'PHP',swift:'SW',kotlin:'KT',dart:'DA',vue:'VUE',svelte:'SV',sql:'SQL',toml:'TOM',yaml:'YML',c:'C',zig:'ZIG',ocaml:'ML',elixir:'EX',clojure:'CLJ',scala:'SC'};
+  const langPips = topLangs.map(([l,cnt])=>{const lt=LANG_TRAITS[l]||{color:'#888'};const abbr=LANG_ABBR[l]||(l.slice(0,3).toUpperCase());return `<div class="pip" style="background:${lt.color}" title="${esc(l)}: ${cnt} edits"><span>${abbr}</span></div>`;}).join('');
   const featBadges = state.unlockedFeatures.map(f=>`<span class="fbadge" style="border-color:${f.color}88;color:${f.color}" title="${esc(f.desc)}">${esc(f.label)}</span>`).join('');
   const hybridBox = currentHybrid?`<div class="hbox" style="border-color:${currentHybrid.color}55"><div class="hname" style="color:${currentHybrid.color}">⚡ ${currentHybrid.name}</div><div class="hdesc">${currentHybrid.desc}</div></div>`:'';
   const cpuStr = state.cpuTempAvailable && state.cpuTemp !== null
@@ -933,10 +961,11 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 .eating-food{animation:food-rise 1.2s ease-out forwards;transform-box:fill-box;transform-origin:center bottom}
 .burp-bubble{position:absolute;top:8px;right:10px;font-family:'VT323',monospace;font-size:18px;color:${c};animation:burp-pop 2s ease-in-out forwards;pointer-events:none;text-shadow:0 0 8px ${c}88}
 .nom-bubble{position:absolute;top:8px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop 1.8s ease-in-out forwards;pointer-events:none;opacity:0.85}
+.nomnom-bubble{position:absolute;top:2px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop 1.8s ease-in-out forwards;pointer-events:none;opacity:0.85;transform:rotate(7deg)}
 .mood-sleeping .creature-svg,.mood-drowsy .creature-svg{animation:slp 4s ease-in-out infinite}
 .ed{font-size:9px;color:var(--d);line-height:1.5;font-style:italic;text-align:center}
-.dna-toggle{background:none;border:none;color:var(--d);font-family:'Space Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:4px;width:100%;justify-content:center}
-.dna-toggle:hover{color:var(--t);background:none}
+.dna-toggle{background:none;border:none;color:var(--c);font-family:'VT323',monospace;font-size:16px;letter-spacing:1px;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;width:100%;justify-content:center;border-top:1px solid var(--b);margin-top:4px}
+.dna-toggle:hover{opacity:0.8;background:none}
 .dna-toggle .arr{display:inline-block;transition:transform .2s;font-style:normal}
 .dna-drawer{display:none;flex-wrap:wrap;gap:3px;justify-content:center;padding-top:4px}
 .dna-drawer.open{display:flex}
@@ -957,6 +986,19 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 @keyframes feralGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 20px 4px rgba(255,40,40,0.22)}}
 .mood-feral{animation:feralGlow 1.2s ease-in-out infinite}
 .mood-feral .cf{animation:ramshake 0.25s ease-in-out infinite}
+.mood-playful .creature-svg{animation:bnc 0.6s ease-in-out infinite}
+/* Chase overlay */
+#chase-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#chase-overlay.active{display:flex}
+#chase-field{width:220px;height:90px;border:1px solid var(--b);border-radius:4px;position:relative;overflow:hidden;background:var(--s)}
+#chase-ground{position:absolute;bottom:18px;left:0;right:0;height:1px;background:var(--b)}
+#chase-creature{position:absolute;bottom:19px;left:10px;width:22px;height:22px;transition:left 0.08s linear}
+#chase-ball{position:absolute;bottom:22px;width:9px;height:9px;border-radius:50%;background:white;box-shadow:0 0 4px white}
+#chase-msg{font-family:'VT323',monospace;font-size:18px;color:var(--c);letter-spacing:1px;text-align:center;min-height:24px}
+#chase-hint{font-size:8px;color:var(--d);text-align:center;letter-spacing:1px}
+#chase-result{font-family:'VT323',monospace;font-size:28px;text-align:center;display:none}
+.chase-win{color:#4caf50}
+.chase-lose{color:var(--d)}
 @keyframes ramshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px) rotate(-0.4deg)}75%{transform:translateX(2px) rotate(0.4deg)}}
 .sv{font-family:'VT323',monospace;font-size:13px;text-align:right;color:var(--d)}
 .sub{font-size:9px;color:var(--d);text-align:center;letter-spacing:1px}
@@ -1037,7 +1079,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <div class="cf">
     ${hasStartedCoding ? buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
-    ${state._nomnom ? `<div class="nom-bubble">${state.hunger > 60 ? '*nom*' : '*nomnom*'}</div>` : ''}
+    ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
     ${hasStartedCoding && featBadges?`<button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
     <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
   </div>
@@ -1057,6 +1099,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 
   <!-- Actions -->
   <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Pet</button></div>
+  <button onclick="openChase()" style="width:100%;margin-top:5px;border-color:${c}44;font-size:9px">⬤ Chase Ball</button>
   <div id="ng-confirm" style="display:none;background:var(--s);border:1px solid #f4433644;border-radius:4px;padding:8px 10px;font-size:9px;color:var(--d)">
     Retire ${esc(state.name)} and begin a new generation.<br/>Your name and one DNA trait carry forward.
     <div style="display:flex;gap:5px;margin-top:6px">
@@ -1083,36 +1126,142 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <hr/>
 
   <!-- Codex -->
-  <div class="section-header">[ codex ]</div>
-  <div class="section-box">
+  <button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>codex</button>
+  <div class="dna-drawer">
+  <div class="section-box" style="width:100%">
     <div class="sec-title">evolution stages</div>
     ${codexEvo}
   </div>
-  <div class="section-box" style="margin-top:6px">
+  <div class="section-box" style="margin-top:6px;width:100%">
     <div class="sec-title">hybrid forms</div>
     ${codexHybrids}
+  </div>
   </div>
 
   <hr/>
 
   <!-- Achievements -->
-  <div class="section-header">[ achievements ]</div>
-  <div class="ach-grid">${achHtml}</div>
+  <button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>achievements (${state.achievements.length})</button>
+  <div class="dna-drawer">
+  <div class="ach-grid" style="width:100%">${achHtml}</div>
+  </div>
 
   <hr/>
 
   <!-- Lore -->
-  <div class="section-header">[ lore ]</div>
-  ${loreHtml}
+  <button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lore (${state.unlockedLore.length})</button>
+  <div class="dna-drawer">${loreHtml}</div>
 
+</div>
+
+<div id="chase-overlay">
+  <div id="chase-msg">press → to chase!</div>
+  <div id="chase-field">
+    <div id="chase-ground"></div>
+    <svg id="chase-creature" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="60" rx="18" ry="22" fill="${c}30" stroke="${c}" stroke-width="2"/><circle cx="42" cy="48" r="4" fill="${c}"/><circle cx="43.5" cy="46.5" r="1.2" fill="white"/><circle cx="58" cy="48" r="4" fill="${c}"/><circle cx="59.5" cy="46.5" r="1.2" fill="white"/><path d="M41 58 Q50 67 59 58" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+    <div id="chase-ball"></div>
+    <div id="chase-result"></div>
+  </div>
+  <div id="chase-hint">arrow right to run &nbsp;|&nbsp; esc to quit</div>
 </div>
 <script>
 const vscode=acquireVsCodeApi();
 function s(t,v){vscode.postMessage({type:t,value:v})}
 function tr(){const w=document.getElementById('rw');w.classList.toggle('on');if(w.classList.contains('on'))document.getElementById('ri').focus()}
 function toggleDna(btn){const d=btn.nextElementSibling;const open=d.classList.toggle('open');btn.querySelector('.arr').style.transform=open?'rotate(90deg)':'';btn.setAttribute('aria-expanded',open)}
+// ── CHASE GAME ──
+let chaseActive=false,chaseRaf=null,cX=10,bX=60,bVel=0.8,caught=false,finished=false,chaseFrame=0;
+const FIELD_W=220,BALL_W=9,CREAT_W=22,CATCH_DIST=28,STEADY_FRAMES=420,STEADY_VEL=0.35;
+function openChase(){
+  const ov=document.getElementById('chase-overlay');
+  ov.classList.add('active');
+  document.getElementById('chase-result').style.display='none';
+  document.getElementById('chase-result').textContent='';
+  document.getElementById('chase-hint').style.display='';
+  cX=10;bX=70;bVel=0.9;caught=false;finished=false;chaseFrame=0;
+  chaseActive=false;
+  if(chaseRaf)cancelAnimationFrame(chaseRaf);
+  _posChase();
+  ov.focus();
+  _countdown(3);
+}
+function _countdown(n){
+  const msg=document.getElementById('chase-msg');
+  if(n>0){
+    msg.textContent=n+'...';
+    setTimeout(()=>_countdown(n-1),700);
+  } else {
+    msg.textContent='GO!';
+    chaseActive=true;
+    chaseRaf=requestAnimationFrame(_chaseLoop);
+    setTimeout(()=>{ if(!finished) document.getElementById('chase-msg').textContent='press \u2192 fast!'; },600);
+  }
+}
+function _posChase(){
+  document.getElementById('chase-creature').style.left=cX+'px';
+  document.getElementById('chase-ball').style.left=bX+'px';
+}
+function _chaseLoop(){
+  if(!chaseActive||finished)return;
+  chaseFrame++;
+  if(chaseFrame<STEADY_FRAMES){
+    bX+=STEADY_VEL;
+  } else {
+    if(chaseFrame===STEADY_FRAMES) document.getElementById('chase-msg').textContent='it\\'s getting away!';
+    bVel=Math.min(bVel*1.018,7);
+    bX+=bVel;
+  }
+  const dist=bX-cX;
+  if(dist<CATCH_DIST&&bX>40){
+    _endChase(true);return;
+  }
+  if(bX>FIELD_W+20){
+    _endChase(false);return;
+  }
+  _posChase();
+  chaseRaf=requestAnimationFrame(_chaseLoop);
+}
+function _endChase(win){
+  finished=true;chaseActive=false;
+  cancelAnimationFrame(chaseRaf);
+  const res=document.getElementById('chase-result');
+  const msg=document.getElementById('chase-msg');
+  document.getElementById('chase-hint').style.display='none';
+  res.style.display='block';
+  if(win){
+    document.getElementById('chase-ball').style.display='none';
+    res.className='chase-win';
+    res.textContent='\u2605 GOT IT! \u2605';
+    msg.textContent='nice catch!';
+    s('game_catch',{result:'win'});
+  } else {
+    res.className='';
+    res.style.color='var(--d)';
+    res.textContent='zooom...';
+    msg.textContent='so close...';
+    s('game_catch',{result:'miss'});
+  }
+  setTimeout(()=>{
+    document.getElementById('chase-overlay').classList.remove('active');
+    document.getElementById('chase-ball').style.display='';
+  },2200);
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){
+    if(document.getElementById('chase-overlay').classList.contains('active')){
+      chaseActive=false;finished=true;cancelAnimationFrame(chaseRaf);
+      document.getElementById('chase-overlay').classList.remove('active');
+      document.getElementById('chase-ball').style.display='';
+    }
+  }
+  if(e.key==='ArrowRight'&&chaseActive&&!finished){
+    e.preventDefault();
+    cX=Math.min(cX+12,FIELD_W-CREAT_W);
+    _posChase();
+  }
+});
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}
-document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter')dr();if(e.key==='Escape')document.getElementById('rw').classList.remove('on')})
+document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter')dr();if(e.key==='Escape')document.getElementById('rw').classList.remove('on')});
 (function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=2000+Math.random()*3598000;setTimeout(function(){t.style.display='';setTimeout(function(){t.style.display='none';f()},400)},d)}f()})();
 </script></body></html>`;
 }
