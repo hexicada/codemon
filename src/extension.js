@@ -49,7 +49,8 @@ const EVOLUTIONS = [
   {name:'Glitchling', minXP:400,  description:'Flickering with potential. Keep coding to see your creature evolve.'},
   {name:'Codespawn',  minXP:1200, description:'Try a debug challenge to help your creature grow.'},
   {name:'Synthecyst', minXP:3000, description:'Your creature mirrors your stack.'},
-  {name:'Archetype',  minXP:7000, description:'Fully evolved. A mirror of your entire coding self.'},
+  {name:'Archetype',  minXP:7000, description:'Almost fully realised. Your coding self takes permanent shape.'},
+  {name:'Paradigm',   minXP:11000, description:'Beyond form. A living pattern of pure intent.'},
 ];
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
@@ -685,10 +686,10 @@ function featureOverlays(features) {
     out.push(`<g opacity="0.75"><polygon points="45,40 50,36 55,40 50,44" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="37,50 42,46 47,50 42,54" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="53,50 58,46 63,50 58,54" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="41,60 46,56 51,60 46,64" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="55,60 60,56 65,60 60,64" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="47,70 52,66 57,70 52,74" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/></g>`);
   else if (ids.includes('scales_light'))
     out.push(`<g opacity="0.4"><polygon points="45,46 50,42 55,46 50,50" fill="#4b8bbe33" stroke="#4b8bbe" stroke-width="0.5"/><polygon points="43,56 48,52 53,56 48,60" fill="#4b8bbe33" stroke="#4b8bbe" stroke-width="0.5"/><polygon points="53,56 58,52 63,56 58,60" fill="#4b8bbe33" stroke="#4b8bbe" stroke-width="0.5"/></g>`);
-  if (ids.includes('forked_tongue')||ids.includes('metatail')) out.push(`<line x1="50" y1="63" x2="50" y2="70" stroke="#4b8bbe" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="68" x2="45" y2="76" stroke="#4b8bbe" stroke-width="1" stroke-linecap="round"/><line x1="50" y1="68" x2="55" y2="76" stroke="#4b8bbe" stroke-width="1" stroke-linecap="round"/>`);
+  if (ids.includes('forked_tongue')||ids.includes('metatail')) out.push(`<g id="tongue-layer" style="display:none"><line x1="50" y1="57" x2="50" y2="65" stroke="#ff6eb4" stroke-width="2.2" stroke-linecap="round"/><line x1="50" y1="63" x2="44" y2="72" stroke="#ff6eb4" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="63" x2="56" y2="72" stroke="#ff6eb4" stroke-width="2" stroke-linecap="round"/></g>`);
   if (ids.includes('snake_tail')) out.push(`<path d="M50,80 Q43,87 47,93 Q53,98 57,93 Q61,87 55,84 Q50,82 50,80" fill="#4b8bbe22" stroke="#4b8bbe" stroke-width="1.2" stroke-linecap="round"/>`);
-  if (ids.includes('iron_plates')||ids.includes('exoskeleton')||ids.includes('hybrid_ironscale')||ids.includes('hybrid_flameirn')) { const ic=ids.includes('hybrid_flameirn')?'#e06030':'#ce422b'; out.push(`<rect x="36" y="44" width="11" height="9" rx="1" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><rect x="53" y="44" width="11" height="9" rx="1" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><rect x="40" y="55" width="20" height="10" rx="1" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><rect x="43" y="67" width="14" height="8" rx="1" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/>`); }
-  if (ids.includes('rust_flecks')) out.push(`<circle cx="38" cy="47" r="1.5" fill="#ce422b" opacity="0.55"/><circle cx="55" cy="43" r="1" fill="#ce422b" opacity="0.5"/><circle cx="62" cy="52" r="1.5" fill="#ce422b" opacity="0.55"/><circle cx="44" cy="61" r="1" fill="#ff8c42" opacity="0.5"/><circle cx="58" cy="64" r="1.5" fill="#ce422b" opacity="0.5"/>`);
+  if (ids.includes('iron_plates')||ids.includes('exoskeleton')||ids.includes('hybrid_ironscale')||ids.includes('hybrid_flameirn')) { const ic=ids.includes('hybrid_flameirn')?'#e06030':'#ce422b'; out.push(`<g transform="rotate(-12,57,32)"><rect x="51" y="32" width="12" height="3" rx="1.5" fill="${ic}" stroke="${ic}bb" stroke-width="0.5"/><rect x="53" y="21" width="8" height="12" rx="0.5" fill="${ic}cc" stroke="${ic}" stroke-width="0.5"/><line x1="57" y1="21" x2="55" y2="15" stroke="${ic}" stroke-width="1.4" stroke-linecap="round"/><circle cx="54.5" cy="14" r="1.8" fill="${ic}"/></g><polygon points="42,62 46,57 50,62 46,67" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><polygon points="50,62 54,57 58,62 54,67" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><polygon points="46,73 50,68 54,73 50,78" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/>`); }
+  if (ids.includes('rust_flecks')) out.push(`<line x1="33" y1="57" x2="33" y2="62" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="31" y1="64" x2="31" y2="69" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="34" y1="71" x2="34" y2="76" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="67" y1="59" x2="67" y2="64" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="69" y1="66" x2="69" y2="71" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="66" y1="73" x2="66" y2="78" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>`);
   if (ids.includes('claws')||ids.includes('exoskeleton')) out.push(`<line x1="28" y1="60" x2="20" y2="67" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="27" y1="57" x2="19" y2="59" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="72" y1="60" x2="80" y2="67" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="73" y1="57" x2="81" y2="59" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>`);
   if (ids.includes('lightning_fin')||ids.includes('arc_trail')||ids.includes('hybrid_voidarc')||ids.includes('hybrid_scale_spark')) { const fc=ids.includes('hybrid_voidarc')?'#9b72cf':'#f7df1e'; out.push(`<polygon points="50,16 44,28 48,26 43,40 50,34 57,40 52,26 56,28" fill="${fc}77" stroke="${fc}" stroke-width="0.8"/>`); }
   if (ids.includes('spark_static')) out.push(`<line x1="30" y1="41" x2="25" y2="36" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/><line x1="27" y1="44" x2="22" y2="44" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/><line x1="70" y1="41" x2="75" y2="36" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/><line x1="73" y1="44" x2="78" y2="44" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/>`);
@@ -753,9 +754,10 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
     `<ellipse cx="50" cy="56" rx="22" ry="22" fill="${c}20" stroke="${c}" stroke-width="1.5"/><ellipse cx="28" cy="60" rx="7" ry="5" fill="${bc}20" stroke="${c}" stroke-width="1"/><ellipse cx="72" cy="60" rx="7" ry="5" fill="${bc}20" stroke="${c}" stroke-width="1"/><ellipse cx="50" cy="80" rx="5" ry="8" fill="${c}20" stroke="${c}" stroke-width="1"/>`,
     `<polygon points="50,22 72,38 72,72 50,82 28,72 28,38" fill="${c}20" stroke="${c}" stroke-width="1.5"/><polygon points="50,30 64,40 64,68 50,74 36,68 36,40" fill="${bc}10"/><line x1="28" y1="55" x2="18" y2="65" stroke="${c}" stroke-width="1.5"/><line x1="72" y1="55" x2="82" y2="65" stroke="${c}" stroke-width="1.5"/>`,
     `<polygon points="50,15 68,28 78,50 68,72 50,85 32,72 22,50 32,28" fill="${c}20" stroke="${c}" stroke-width="1.5"/><polygon points="50,24 63,33 70,50 63,67 50,76 37,67 30,50 37,33" fill="${bc}12"/><circle cx="50" cy="50" r="8" fill="${c}20" stroke="${c}" stroke-width="1"/><line x1="22" y1="50" x2="12" y2="44" stroke="${c}" stroke-width="1.5"/><line x1="22" y1="50" x2="12" y2="56" stroke="${c}" stroke-width="1.5"/><line x1="78" y1="50" x2="88" y2="44" stroke="${c}" stroke-width="1.5"/><line x1="78" y1="50" x2="88" y2="56" stroke="${c}" stroke-width="1.5"/><line x1="50" y1="15" x2="50" y2="5" stroke="${c}" stroke-width="1.5"/><circle cx="50" cy="4" r="2" fill="${c}"/>`,
+    `<polygon points="50,10 72,24 84,50 72,76 50,90 28,76 16,50 28,24" fill="${c}18" stroke="${c}" stroke-width="1.5"/><polygon points="50,20 66,30 74,50 66,70 50,80 34,70 26,50 34,30" fill="${c}10" stroke="${c}" stroke-width="0.7"/><polygon points="50,30 60,37 64,50 60,63 50,70 40,63 36,50 40,37" fill="${bc}15"/><circle cx="50" cy="50" r="7" fill="${c}25" stroke="${c}" stroke-width="1"/><line x1="16" y1="50" x2="5" y2="44" stroke="${c}" stroke-width="1.5"/><line x1="16" y1="50" x2="5" y2="56" stroke="${c}" stroke-width="1.5"/><line x1="84" y1="50" x2="95" y2="44" stroke="${c}" stroke-width="1.5"/><line x1="84" y1="50" x2="95" y2="56" stroke="${c}" stroke-width="1.5"/><line x1="50" y1="10" x2="50" y2="1" stroke="${c}" stroke-width="1.5"/><circle cx="50" cy="1" r="2.5" fill="${c}"/><line x1="28" y1="24" x2="20" y2="15" stroke="${c}" stroke-width="1"/><line x1="72" y1="24" x2="80" y2="15" stroke="${c}" stroke-width="1"/>`,
   ];
   const extO = extTraits.map(t=>{
-    if(t.visualId==='ext_rust') return `<rect x="36" y="44" width="11" height="8" rx="1" fill="#ce422b22" stroke="#ce422b" stroke-width="0.8"/><rect x="53" y="44" width="11" height="8" rx="1" fill="#ce422b22" stroke="#ce422b" stroke-width="0.8"/><rect x="40" y="54" width="20" height="9" rx="1" fill="#ce422b22" stroke="#ce422b" stroke-width="0.8"/>`;
+    if(t.visualId==='ext_rust') return `<path d="M30,58 L21,60 L14,65" fill="none" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M30,64 L20,67 L13,73" fill="none" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M30,70 L21,74 L15,79" fill="none" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M70,58 L79,60 L86,65" fill="none" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M70,64 L80,67 L87,73" fill="none" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M70,70 L79,74 L85,79" fill="none" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
     if(t.visualId==='ext_gitlens') return `<circle cx="37" cy="44" r="5" fill="none" stroke="#f4a26188" stroke-width="0.8"/><circle cx="37" cy="44" r="2" fill="#f4a261" opacity="0.7"/><circle cx="63" cy="44" r="5" fill="none" stroke="#f4a26188" stroke-width="0.8"/><circle cx="63" cy="44" r="2" fill="#f4a261" opacity="0.7"/>`;
     if(t.visualId==='ext_prettier') return `<path d="M40,34 Q50,30 60,34" fill="none" stroke="white" stroke-width="1" opacity="0.2" stroke-linecap="round"/>`;
     if(t.visualId==='ext_cpp') return `<line x1="30" y1="40" x2="38" y2="52" stroke="#f34b7d" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/><line x1="70" y1="40" x2="62" y2="52" stroke="#f34b7d" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>`;
@@ -770,7 +772,7 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
     if(t.visualId==='ext_python') return `<path d="M47,68 Q50,72 53,68" fill="none" stroke="#4b8bbe" stroke-width="1" stroke-linecap="round" opacity="0.6"/>`;
     return '';
   }).join('');
-  return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,4)]}${featureOverlays(features)}${extO}${eyeL}${eyeR}${mouth}${eatingSvg}${dim?`<text x="56" y="27" font-size="9" fill="${c}" opacity="0.7" font-family="monospace">z</text>`:''}</g></svg>`;
+  return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,5)]}${featureOverlays(features)}${extO}${eyeL}${eyeR}${mouth}${eatingSvg}${dim?`<text x="56" y="27" font-size="9" fill="${c}" opacity="0.7" font-family="monospace">z</text>`:''}</g></svg>`;
 }
 
 // ── HTML ──────────────────────────────────────────────────────────────────────
@@ -933,7 +935,11 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 .nom-bubble{position:absolute;top:8px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop 1.8s ease-in-out forwards;pointer-events:none;opacity:0.85}
 .mood-sleeping .creature-svg,.mood-drowsy .creature-svg{animation:slp 4s ease-in-out infinite}
 .ed{font-size:9px;color:var(--d);line-height:1.5;font-style:italic;text-align:center}
-.fts{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
+.dna-toggle{background:none;border:none;color:var(--d);font-family:'Space Mono',monospace;font-size:8px;text-transform:uppercase;letter-spacing:1px;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:4px;width:100%;justify-content:center}
+.dna-toggle:hover{color:var(--t);background:none}
+.dna-toggle .arr{display:inline-block;transition:transform .2s;font-style:normal}
+.dna-drawer{display:none;flex-wrap:wrap;gap:3px;justify-content:center;padding-top:4px}
+.dna-drawer.open{display:flex}
 .fbadge{font-size:8px;padding:1px 5px;border:1px solid;border-radius:2px;text-transform:uppercase;letter-spacing:.5px;cursor:default}
 .hbox{background:var(--s);border:1px solid;border-radius:3px;padding:7px 9px}
 .hname{font-family:'VT323',monospace;font-size:15px;letter-spacing:1px;margin-bottom:3px}
@@ -1032,7 +1038,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
     ${hasStartedCoding ? buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="nom-bubble">${state.hunger > 60 ? '*nom*' : '*nomnom*'}</div>` : ''}
-    ${hasStartedCoding && featBadges?`<div class="fts">${featBadges}</div>`:''}
+    ${hasStartedCoding && featBadges?`<button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
     <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
   </div>
 
@@ -1104,8 +1110,10 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 const vscode=acquireVsCodeApi();
 function s(t,v){vscode.postMessage({type:t,value:v})}
 function tr(){const w=document.getElementById('rw');w.classList.toggle('on');if(w.classList.contains('on'))document.getElementById('ri').focus()}
+function toggleDna(btn){const d=btn.nextElementSibling;const open=d.classList.toggle('open');btn.querySelector('.arr').style.transform=open?'rotate(90deg)':'';btn.setAttribute('aria-expanded',open)}
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}
 document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter')dr();if(e.key==='Escape')document.getElementById('rw').classList.remove('on')})
+(function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=2000+Math.random()*3598000;setTimeout(function(){t.style.display='';setTimeout(function(){t.style.display='none';f()},400)},d)}f()})();
 </script></body></html>`;
 }
 
