@@ -15,6 +15,8 @@ const LANG_TRAITS = {
   cpp:        { element:'fire',    color:'#f34b7d', features:{ 50:{id:'heat_shimmer',label:'heat shimmer',desc:'Heat distortion around the body. Undefined behavior radiates.'}, 150:{id:'pointer_horns',label:'pointer horns',desc:'Small horns like pointer arrows. Memory is yours to manage.'}, 400:{id:'flame_mane',label:'flame mane',desc:'A mane of low fire. Segfault-born. Veteran.'}, 800:{id:'template_tail',label:'template tail',desc:'A tail that branches into multiple types. Generic.'} }},
   lua:        { element:'moon',    color:'#7b86b8', features:{ 50:{id:'lunar_glow',label:'lunar glow',desc:'A faint lunar glow. Embedded everywhere, seen nowhere.'}, 150:{id:'table_shell',label:'table shell',desc:'A shell of interlocking tables. The only data structure needed.'}, 400:{id:'metatail',label:'metatail',desc:'A tail with metamethods. Indexing is recursive.'}, 800:{id:'coroutine_fins',label:'coroutine fins',desc:'Fins that yield and resume independently.'} }},
   ruby:       { element:'gem',     color:'#cc342d', features:{ 50:{id:'gem_flecks',label:'gem flecks',desc:'Crystalline gem flecks catch the light. Matz is nice.'}, 150:{id:'ruby_spine',label:'ruby spine',desc:'A spine of deep red rubies. Convention over configuration.'}, 400:{id:'facet_eyes',label:'facet eyes',desc:'Faceted gem eyes. Everything is an object. Everything.'}, 800:{id:'crystal_wings',label:'crystal wings',desc:'Crystalline wings. Beautiful. Slow when needed. Fast enough.'} }},
+  shellscript:{ element:'shell',   color:'#4ec94e', features:{ 50:{id:'pipe_marks',label:'pipe marks',desc:'Channels carved along the body. Data flows through, one stream into the next.'}, 150:{id:'shebang_crown',label:'shebang crown',desc:'A #!/bin/bash crown. The shell knows exactly what it is.'}, 400:{id:'fork_tines',label:'fork tines',desc:'Split tines on the tail. Every process can fork. Children inherit everything.'}, 800:{id:'daemon_form',label:'daemon form',desc:'The creature runs in the background now. PID unknown. Detached from the terminal that spawned it.'} }},
+  holyc:      { element:'divine',  color:'#f0cc40', features:{ 50:{id:'gill_slits',label:'gill slits',desc:'Faint gill lines trace both sides of the neck. The fish remembers what it was.'}, 150:{id:'fin_limbs',label:'fin-limbs',desc:'The fins have thickened. A suggestion of intention at the ends. Not quite feet. Not quite fins.'}, 400:{id:'radiant_aura',label:'divine radiance',desc:'The creature radiates. The outer air reorganises itself into faint orbital rings. Something is happening.'}, 800:{id:'ophanim_rings',label:'ophanim rings',desc:'Concentric rings orbit now, of their own will. Full of eyes. Do not be afraid. This is what evolution looks like when it is also worship.'} }},
 };
 
 const HYBRIDS = [
@@ -25,6 +27,9 @@ const HYBRIDS = [
   { id:'void_circuit',      requires:{haskell:100,javascript:100},name:'Void Circuit',     desc:'Pure functions crackling with side effects. Contradiction embodied.',              color:'#9b72cf', featureId:'hybrid_voidarc',    featureLabel:'void arcs' },
   { id:'moon_serpent',      requires:{lua:100,python:100},      name:'Moon Serpent',       desc:'Embedded serpent. Runs inside other creatures. Lightweight. Recursive.',           color:'#b8c4e8', featureId:'hybrid_moonscale',  featureLabel:'lunar scales' },
   { id:'flame_iron',        requires:{cpp:150,rust:150},        name:'Flame Iron',         desc:'Ancient fire meets modern ownership. Terrifying. Correct.',                       color:'#e06030', featureId:'hybrid_flameirn',   featureLabel:'burning iron hide' },
+  { id:'shell_serpent',     requires:{shellscript:100,python:100}, name:'Shell Serpent',    desc:'Pipes and imports. Glue code made flesh. Everything is a file.',                  color:'#47a87a', featureId:'hybrid_shellscale', featureLabel:'pipe-scarred scales' },
+  { id:'iron_shell',        requires:{shellscript:100,rust:100},   name:'Iron Shell',       desc:'Memory-safe shell scripts. Every exit code checked. The borrow checker approves.', color:'#7a8f6f', featureId:'hybrid_ironshell',  featureLabel:'oxidised carapace' },
+  { id:'sacred_iron',       requires:{holyc:100,rust:100},         name:'Sacred Iron',      desc:'Divinely typed and borrow-checked. Zero undefined behaviour. Terry would approve the discipline.', color:'#c8a840', featureId:'hybrid_sacredirn',  featureLabel:'blessed iron plating' },
 ];
 
 const EXT_TRAITS = {
@@ -236,6 +241,8 @@ function detectPattern(state, lang, prevLang) {
   if (lang === 'rust' && Math.random() < 0.03) return pickRandom(PATTERN_COMMENTS.rust);
   if (lang === 'python' && Math.random() < 0.03) return pickRandom(PATTERN_COMMENTS.python);
   if (lang === 'r' && Math.random() < 0.03) return pickRandom(PATTERN_COMMENTS.r);
+  if ((lang === 'shellscript' || lang === 'bash') && Math.random() < 0.03) return pickRandom(PATTERN_COMMENTS.shellscript);
+  if (lang === 'holyc' && Math.random() < 0.05) return pickRandom(PATTERN_COMMENTS.holyc);
   // Many edits
   if (totalEdits % 200 === 0 && totalEdits > 0) return pickRandom(PATTERN_COMMENTS.manyEdits);
   return null;
@@ -802,6 +809,44 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
   return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,5)]}${featureOverlays(features)}${extO}${eyeL}${eyeR}${mouth}${eatingSvg}${dim?`<text x="56" y="27" font-size="9" fill="${c}" opacity="0.7" font-family="monospace">z</text>`:''}</g></svg>`;
 }
 
+function buildHolyCCreatureSVG(evoIdx, c, bc, mood, features) {
+  const ids = features.map(f => f.featureId);
+  const dim = mood === 'sleeping' || mood === 'drowsy';
+  const happy = mood === 'happy';
+  const playful = mood === 'playful';
+  const eating = mood === 'eating';
+  const eatingSvg = eating ? `<text x="44" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">{;}</text>` : '';
+  const fishEye = dim
+    ? `<line x1="27" y1="50" x2="33" y2="50" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>`
+    : `<circle cx="30" cy="50" r="3.5" fill="${c}"/><circle cx="29" cy="49" r="1.2" fill="white" opacity="0.8"/>`;
+  const eyeL = dim
+    ? `<line x1="34" y1="44" x2="41" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`
+    : happy ? `<path d="M33 43 Q37.5 39 42 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>` : `<circle cx="37" cy="44" r="3" fill="${c}"/>`;
+  const eyeR = dim
+    ? `<line x1="59" y1="44" x2="66" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`
+    : happy ? `<path d="M58 43 Q62.5 39 67 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>` : `<circle cx="63" cy="44" r="3" fill="${c}"/>`;
+  const fishMouth = `<path d="M24,53 Q23,56 25,58" fill="none" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>`;
+  const stdMouth = dim ? `<line x1="44" y1="58" x2="56" y2="58" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>` : eating ? `<circle cx="50" cy="57" r="4" fill="${c}" opacity="0.9"/>` : happy ? `<path d="M43 56 Q50 62 57 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>` : playful ? `<path d="M41 55 Q50 64 59 55" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>` : `<line x1="44" y1="57" x2="56" y2="57" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
+  const bodies = [
+    // 0 — Fish (Eggling)
+    `<ellipse cx="47" cy="52" rx="22" ry="13" fill="${c}20" stroke="${c}" stroke-width="1.5"/><path d="M69,52 L82,41 L82,63 Z" fill="${c}28" stroke="${c}" stroke-width="1"/><path d="M46,39 Q53,27 62,39" fill="${c}18" stroke="${c}" stroke-width="1" stroke-linejoin="round"/><path d="M40,56 Q30,52 28,61 Q30,68 40,65" fill="${c}20" stroke="${c}" stroke-width="1"/><path d="M38,44 Q35,52 38,60" fill="none" stroke="${c}" stroke-width="1.1" opacity="0.5"/><path d="M41,44 Q38,52 41,61" fill="none" stroke="${c}" stroke-width="0.7" opacity="0.35"/>${fishEye}${fishMouth}${eatingSvg}`,
+    // 1 — Fish + proto-limbs (Glitchling)
+    `<ellipse cx="47" cy="51" rx="21" ry="14" fill="${c}20" stroke="${c}" stroke-width="1.5"/><path d="M68,51 L80,42 L80,60 Z" fill="${c}28" stroke="${c}" stroke-width="1"/><path d="M47,37 Q54,27 61,37" fill="${c}18" stroke="${c}" stroke-width="1"/><path d="M39,55 Q29,51 27,60 Q29,67 39,63" fill="${c}20" stroke="${c}" stroke-width="1"/><path d="M37,45 Q34,51 37,58" fill="none" stroke="${c}" stroke-width="0.9" opacity="0.35"/><line x1="49" y1="65" x2="45" y2="78" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><line x1="57" y1="64" x2="61" y2="77" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/><circle cx="45" cy="80" r="3" fill="${c}28" stroke="${c}" stroke-width="0.8"/><circle cx="61" cy="79" r="3" fill="${c}28" stroke="${c}" stroke-width="0.8"/>${fishEye}${fishMouth}${eatingSvg}`,
+    // 2 — Amphibian (Codespawn)
+    `<ellipse cx="50" cy="56" rx="18" ry="22" fill="${c}20" stroke="${c}" stroke-width="1.5"/><path d="M63,68 Q76,74 72,83" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/><path d="M32,49 Q21,44 19,54 Q19,62 32,59" fill="${c}18" stroke="${c}" stroke-width="1.1"/><path d="M68,49 Q79,44 81,54 Q81,62 68,59" fill="${c}18" stroke="${c}" stroke-width="1.1"/><path d="M42,77 Q36,88 38,93" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/><path d="M38,93 L32,95 M38,93 L38,97 M38,93 L44,96" fill="none" stroke="${c}" stroke-width="1" stroke-linecap="round"/><path d="M58,77 Q64,88 62,93" fill="none" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/><path d="M62,93 L56,96 M62,93 L62,97 M62,93 L68,96" fill="none" stroke="${c}" stroke-width="1" stroke-linecap="round"/>${eyeL}${eyeR}${stdMouth}${eatingSvg}`,
+    // 3 — Seraph / First ring forming (Synthecyst)
+    `<ellipse cx="50" cy="58" rx="13" ry="20" fill="${c}20" stroke="${c}" stroke-width="1.4"/><ellipse cx="50" cy="58" rx="7" ry="12" fill="${bc}10"/><path d="M37,50 Q18,36 16,20 Q22,6 38,20" fill="${c}22" stroke="${c}" stroke-width="0.9"/><path d="M63,50 Q82,36 84,20 Q78,6 62,20" fill="${c}22" stroke="${c}" stroke-width="0.9"/><path d="M37,64 Q20,76 18,88" fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/><path d="M63,64 Q80,76 82,88" fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/><ellipse cx="50" cy="50" rx="44" ry="11" fill="none" stroke="${c}" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.6"/><circle cx="94" cy="50" r="2" fill="${c}" opacity="0.7"/><circle cx="72" cy="60" r="1.8" fill="${c}" opacity="0.6"/><circle cx="28" cy="60" r="1.8" fill="${c}" opacity="0.6"/><circle cx="6" cy="50" r="2" fill="${c}" opacity="0.7"/><circle cx="28" cy="40" r="1.8" fill="${c}" opacity="0.6"/><circle cx="72" cy="40" r="1.8" fill="${c}" opacity="0.6"/>${eyeL}${eyeR}${stdMouth}${eatingSvg}`,
+    // 4 — Two rings / Ophanim forming (Archetype)
+    `<circle cx="50" cy="50" r="11" fill="${c}25" stroke="${c}" stroke-width="1.4"/><circle cx="50" cy="50" r="6" fill="${bc}20"/><ellipse cx="50" cy="50" rx="44" ry="11" fill="none" stroke="${c}" stroke-width="1.2" opacity="0.85"/><ellipse cx="50" cy="50" rx="11" ry="42" fill="none" stroke="${c}" stroke-width="1.2" opacity="0.85"/><circle cx="94" cy="50" r="2.5" fill="${c}"/><circle cx="72" cy="60" r="2.2" fill="${c}" opacity="0.85"/><circle cx="28" cy="60" r="2.2" fill="${c}" opacity="0.85"/><circle cx="6" cy="50" r="2.5" fill="${c}"/><circle cx="28" cy="40" r="2.2" fill="${c}" opacity="0.85"/><circle cx="72" cy="40" r="2.2" fill="${c}" opacity="0.85"/><circle cx="61" cy="50" r="2.5" fill="${c}"/><circle cx="39" cy="50" r="2.5" fill="${c}"/><circle cx="58" cy="80" r="2.2" fill="${c}" opacity="0.85"/><circle cx="42" cy="80" r="2.2" fill="${c}" opacity="0.85"/><circle cx="50" cy="92" r="2.5" fill="${c}"/><circle cx="42" cy="20" r="2.2" fill="${c}" opacity="0.85"/><circle cx="58" cy="20" r="2.2" fill="${c}" opacity="0.85"/><circle cx="50" cy="8" r="2.5" fill="${c}"/><path d="M38,38 Q18,24 20,8 Q26,2 38,14" fill="${c}20" stroke="${c}" stroke-width="0.9"/><path d="M62,38 Q82,24 80,8 Q74,2 62,14" fill="${c}20" stroke="${c}" stroke-width="0.9"/><circle cx="50" cy="50" r="3.5" fill="${c}" opacity="0.8"/>${eatingSvg}`,
+    // 5 — Full Ophanim (Paradigm) — three concentric rings, all the eyes
+    `<circle cx="50" cy="50" r="10" fill="${c}30" stroke="${c}" stroke-width="1.3"/><circle cx="50" cy="50" r="5" fill="${bc}25"/><circle cx="50" cy="50" r="2.5" fill="${c}" opacity="0.95"/><ellipse cx="50" cy="50" rx="44" ry="11" fill="none" stroke="${c}" stroke-width="1.3" opacity="0.9"/><ellipse cx="50" cy="50" rx="11" ry="42" fill="none" stroke="${c}" stroke-width="1.3" opacity="0.9"/><g transform="rotate(60,50,50)"><ellipse cx="50" cy="50" rx="44" ry="11" fill="none" stroke="${c}" stroke-width="1" opacity="0.7"/><circle cx="94" cy="50" r="2" fill="${c}" opacity="0.75"/><circle cx="72" cy="60" r="1.8" fill="${c}" opacity="0.7"/><circle cx="28" cy="60" r="1.8" fill="${c}" opacity="0.7"/><circle cx="6" cy="50" r="2" fill="${c}" opacity="0.75"/><circle cx="28" cy="40" r="1.8" fill="${c}" opacity="0.7"/><circle cx="72" cy="40" r="1.8" fill="${c}" opacity="0.7"/></g><circle cx="94" cy="50" r="2.5" fill="${c}"/><circle cx="72" cy="60" r="2.2" fill="${c}" opacity="0.9"/><circle cx="28" cy="60" r="2.2" fill="${c}" opacity="0.9"/><circle cx="6" cy="50" r="2.5" fill="${c}"/><circle cx="28" cy="40" r="2.2" fill="${c}" opacity="0.9"/><circle cx="72" cy="40" r="2.2" fill="${c}" opacity="0.9"/><circle cx="61" cy="50" r="2.5" fill="${c}"/><circle cx="39" cy="50" r="2.5" fill="${c}"/><circle cx="58" cy="80" r="2.2" fill="${c}" opacity="0.9"/><circle cx="42" cy="80" r="2.2" fill="${c}" opacity="0.9"/><circle cx="50" cy="92" r="2.5" fill="${c}"/><circle cx="42" cy="20" r="2.2" fill="${c}" opacity="0.9"/><circle cx="58" cy="20" r="2.2" fill="${c}" opacity="0.9"/><circle cx="50" cy="8" r="2.5" fill="${c}"/><path d="M36,36 Q16,20 18,4 Q24,0 38,12" fill="${c}22" stroke="${c}" stroke-width="0.8" opacity="0.85"/><path d="M64,36 Q84,20 82,4 Q76,0 62,12" fill="${c}22" stroke="${c}" stroke-width="0.8" opacity="0.85"/><path d="M36,36 Q8,28 2,42" fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/><path d="M64,36 Q92,28 98,42" fill="none" stroke="${c}" stroke-width="1.4" stroke-linecap="round"/><path d="M36,64 Q8,72 2,60" fill="${c}15" stroke="${c}" stroke-width="0.8" opacity="0.75"/><path d="M64,64 Q92,72 98,60" fill="${c}15" stroke="${c}" stroke-width="0.8" opacity="0.75"/><circle cx="50" cy="50" r="17" fill="none" stroke="${c}" stroke-width="0.4" stroke-dasharray="1,5" opacity="0.35"/><circle cx="50" cy="50" r="25" fill="none" stroke="${c}" stroke-width="0.3" stroke-dasharray="1,7" opacity="0.2"/>${eatingSvg}`,
+  ];
+  const over = [];
+  if (ids.includes('radiant_aura')) over.push(`<circle cx="50" cy="50" r="47" fill="none" stroke="${c}" stroke-width="0.5" stroke-dasharray="2,9" opacity="0.2"/>`);
+  if (ids.includes('ophanim_rings')) over.push(`<ellipse cx="50" cy="50" rx="36" ry="9" fill="none" stroke="${c}" stroke-width="0.4" stroke-dasharray="1.5,5" opacity="0.25" transform="rotate(-30,50,50)"/>`);
+  return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,5)]}${over.join('')}</g></svg>`;
+}
+
 // ── HTML ──────────────────────────────────────────────────────────────────────
 
 function refreshWebview(webview, state) {
@@ -817,6 +862,7 @@ function refreshWebview(webview, state) {
   const currentHybrid = state.activeHybrids.length ? HYBRIDS.find(h=>h.id===state.activeHybrids[state.activeHybrids.length-1]) : null;
   const totalEdits = Object.values(state.langCounts).reduce((a,b)=>a+b,0);
   const hasStartedCoding = totalEdits > 0;
+  const isHolyC = state.dominantLang === 'holyc' || (state.langCounts.holyc || 0) >= 20;
 
   // Next feature hint
   let hint = '';
@@ -842,8 +888,8 @@ function refreshWebview(webview, state) {
 
   // ── PUZZLE HTML ──
   let puzzleHtml = '';
-  const puzzleLangOptions = ['auto','python','javascript','rust','haskell','r','lua','default'];
-  const puzzleLangShort  = {'auto':'AUTO','python':'PY','javascript':'JS','rust':'RS','haskell':'HS','r':'R','lua':'LUA','default':'CS'};
+  const puzzleLangOptions = ['auto','python','javascript','rust','haskell','r','lua','shellscript','holyc','default'];
+  const puzzleLangShort  = {'auto':'AUTO','python':'PY','javascript':'JS','rust':'RS','haskell':'HS','r':'R','lua':'LUA','shellscript':'SH','holyc':'HC','default':'CS'};
   const selectedPuzzleLang = state.puzzleLang || 'auto';
   const langSelectorHtml = `<div style="margin-top:6px">
     <div style="font-size:9px;color:var(--d);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">language:</div>
@@ -926,7 +972,7 @@ function refreshWebview(webview, state) {
     : '<div class="hint" style="text-align:center">Unlock lore by coding and finding bugs.</div>';
 
   // ── STATS ──
-  const LANG_ABBR = {javascript:'JS',typescript:'TS',python:'PY',rust:'RS',go:'GO',haskell:'HS',cpp:'C++',lua:'LU',ruby:'RB',r:'R',rmd:'R',css:'CSS',scss:'CSS',html:'HTM',shellscript:'SH',bash:'SH',powershell:'PS',java:'JV',csharp:'C#',php:'PHP',swift:'SW',kotlin:'KT',dart:'DA',vue:'VUE',svelte:'SV',sql:'SQL',toml:'TOM',yaml:'YML',c:'C',zig:'ZIG',ocaml:'ML',elixir:'EX',clojure:'CLJ',scala:'SC'};
+  const LANG_ABBR = {javascript:'JS',typescript:'TS',python:'PY',rust:'RS',go:'GO',haskell:'HS',cpp:'C++',lua:'LU',ruby:'RB',r:'R',rmd:'R',css:'CSS',scss:'CSS',html:'HTM',shellscript:'SH',bash:'SH',powershell:'PS',java:'JV',csharp:'C#',php:'PHP',swift:'SW',kotlin:'KT',dart:'DA',vue:'VUE',svelte:'SV',sql:'SQL',toml:'TOM',yaml:'YML',c:'C',zig:'ZIG',ocaml:'ML',elixir:'EX',clojure:'CLJ',scala:'SC',holyc:'HC'};
   const langPips = topLangs.map(([l,cnt])=>{const lt=LANG_TRAITS[l]||{color:'#888'};const abbr=LANG_ABBR[l]||(l.slice(0,3).toUpperCase());return `<div class="pip" style="background:${lt.color}" title="${esc(l)}: ${cnt} edits"><span>${abbr}</span></div>`;}).join('');
   const featBadges = state.unlockedFeatures.map(f=>`<span class="fbadge" style="border-color:${f.color}88;color:${f.color}" title="${esc(f.desc)}">${esc(f.label)}</span>`).join('');
   const hybridBox = currentHybrid?`<div class="hbox" style="border-color:${currentHybrid.color}55"><div class="hname" style="color:${currentHybrid.color}">⚡ ${currentHybrid.name}</div><div class="hdesc">${currentHybrid.desc}</div></div>`:'';
@@ -1016,10 +1062,13 @@ button:active{transform:scale(.96)}
 hr{border:none;border-top:1px solid var(--b)}
 .rw{display:none;gap:4px}.rw.on{display:flex}
 .rw input{flex:1;background:var(--s);border:1px solid var(--c);color:var(--t);font-family:'Space Mono',monospace;font-size:10px;padding:4px 6px;border-radius:3px;outline:none}
-/* Pattern comment */
-.comment-bubble{background:var(--s);border:1px solid var(--c)44;border-radius:4px;padding:8px 10px;font-size:10px;line-height:1.6;color:var(--t);position:relative}
-.comment-bubble::before{content:'◈';position:absolute;top:-1px;left:8px;font-size:9px;color:var(--c);background:var(--bg);padding:0 3px}
-.dismiss-btn{font-size:8px;color:var(--d);cursor:pointer;float:right;margin-top:2px;background:none;border:none;padding:0}
+/* Pattern comment speech bubble */
+.speech-bubble{position:relative;background:var(--s);border:1px solid var(--c)55;border-radius:6px;padding:7px 26px 7px 9px;font-size:9.5px;line-height:1.55;color:var(--t);width:100%;box-sizing:border-box;animation:bubble-fade 10s forwards}
+@keyframes bubble-fade{0%,70%{opacity:1}100%{opacity:0;pointer-events:none}}
+.speech-bubble::after{content:'';position:absolute;bottom:-7px;left:22px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid var(--c)55}
+.speech-bubble::before{content:'';position:absolute;bottom:-5px;left:23px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--s)}
+.bubble-name{font-size:8px;color:var(--c);text-transform:lowercase;letter-spacing:0.5px;margin-bottom:3px;opacity:0.8}
+.dismiss-btn{font-size:8px;color:var(--d);cursor:pointer;position:absolute;top:5px;right:6px;background:none;border:none;padding:0;line-height:1}
 .dismiss-btn:hover{color:var(--t)}
 /* Puzzle */
 .section-box{background:var(--s);border:1px solid var(--b);border-radius:4px;padding:10px}
@@ -1077,7 +1126,8 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 
   <!-- Creature -->
   <div class="cf">
-    ${hasStartedCoding ? buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits) : buildEggSVG(state.installedExtTraits,c)}
+    ${state.patternComment?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:''}
+    ${hasStartedCoding ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits)) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
     ${hasStartedCoding && featBadges?`<button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
@@ -1108,9 +1158,6 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
     </div>
   </div>
   <button onclick="document.getElementById('ng-confirm').style.display=(document.getElementById('ng-confirm').style.display==='none'?'block':'none')" style="width:100%;opacity:0.3;font-size:8px">⟳ new game+</button>
-
-  <!-- Pattern comment bubble -->
-  ${state.patternComment?`<div class="comment-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button>${esc(state.patternComment)}</div>`:''}
 
   <hr/>
 
@@ -1262,7 +1309,7 @@ document.addEventListener('keydown',function(e){
 });
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}
 document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter')dr();if(e.key==='Escape')document.getElementById('rw').classList.remove('on')});
-(function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=2000+Math.random()*3598000;setTimeout(function(){t.style.display='';setTimeout(function(){t.style.display='none';f()},400)},d)}f()})();
+(function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=1500+Math.random()*7000;setTimeout(function(){t.style.display='';setTimeout(function(){t.style.display='none';f()},350)},d)}f()})();
 </script></body></html>`;
 }
 

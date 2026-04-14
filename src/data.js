@@ -342,6 +342,149 @@ const DEBUG_PUZZLES = {
       lore: 'One. Not zero. The moon counts from one. There is no emptiness before the first thing — only the first thing.',
     },
   ],
+  shellscript: [
+    {
+      lines: [
+        'filename="my file.txt"',
+        'if [ -f $filename ]; then',
+        '    echo "File exists"',
+        'fi',
+      ],
+      bugLine: 1,
+      hint: 'Word splitting on unquoted variable.',
+      explanation: '`$filename` expands to two words: `my` and `file.txt`. The test sees `-f my file.txt` which is malformed. Always quote variables in tests: `[ -f "$filename" ]`.',
+      xp: 30,
+      lore: 'The space inside the name was invisible until it broke everything. Words split on the air. Quote what you are not certain of. In the shell, certainty is a habit you build deliberately.',
+    },
+    {
+      lines: [
+        'x=10',
+        'if [ $x > 5 ]; then',
+        '    echo "big number"',
+        'fi',
+      ],
+      bugLine: 1,
+      hint: '`>` inside `[ ]` is not comparison.',
+      explanation: 'Inside `[ ]`, `>` is output redirection — it creates a file named `5`. Use `-gt` for numeric comparison: `[ $x -gt 5 ]`. Or switch to `[[ $x -gt 5 ]]` for the safer modern form.',
+      xp: 35,
+      lore: 'The shell heard redirection where I meant comparison. A file named 5 appeared from nowhere. Symbols carry different weight depending on where you stand.',
+    },
+    {
+      lines: [
+        'count=7',
+        'if [ count -gt 3 ]; then',
+        '    echo "count is large"',
+        'fi',
+      ],
+      bugLine: 1,
+      hint: 'Missing `$` on variable reference.',
+      explanation: '`count` without `$` is a literal string, not the variable\'s value. `[ count -gt 3 ]` tries to compare the word "count" as an integer and errors. Use `[ $count -gt 3 ]` or `[ "$count" -gt 3 ]`.',
+      xp: 25,
+      lore: 'The shell read a name, not a value. The dollar sign is not decoration — it is the difference between what something is called and what something holds.',
+    },
+    {
+      lines: [
+        'x=5',
+        'y=x+1',
+        'echo "$y"',
+      ],
+      bugLine: 1,
+      hint: 'Variable assignment is not arithmetic.',
+      explanation: '`y=x+1` assigns the literal string "x+1". To evaluate arithmetic, use: `y=$((x+1))`. The `$((...))` context tells the shell to treat the contents as a math expression.',
+      xp: 30,
+      lore: 'I expected a number. The shell gave me a string that looked like math. The double parentheses open a different world — one where the shell finally agrees to count.',
+    },
+    {
+      lines: [
+        'MY_VAR="hello"',
+        '',
+        "bash -c 'echo \"Value: $MY_VAR\"'",
+      ],
+      bugLine: 0,
+      hint: 'Child processes do not inherit unexported variables.',
+      explanation: 'Shell variables are local to the current shell by default. Use `export MY_VAR="hello"` to pass them into subprocesses. Without `export`, the child bash sees an empty string.',
+      xp: 35,
+      lore: 'I had the value. The child process did not. Inheritance is not automatic here — you have to explicitly decide what gets passed on.',
+    },
+    {
+      lines: [
+        'for file in $(ls *.log); do',
+        '    echo "Processing: $file"',
+        'done',
+      ],
+      bugLine: 0,
+      hint: 'Parsing `ls` output breaks on filenames with spaces.',
+      explanation: '`$(ls *.log)` splits on whitespace — any filename with a space becomes multiple words. Use the glob directly: `for file in *.log; do`. The shell expands globs safely without word-splitting.',
+      xp: 40,
+      lore: 'I trusted ls to give me names. It gave me words. Globs speak directly to the filesystem. ls speaks to humans. The distinction matters when names contain spaces.',
+    },
+  ],
+  holyc: [
+    {
+      lines: [
+        'U8 *greeting = "Hello, God.";',
+        'U8 *ptr = NULL;',
+        'if (ptr == NULL) {',
+        '  Print("ptr is empty\\n");',
+        '}',
+      ],
+      bugLine: 1,
+      hint: 'HolyC does not have NULL.',
+      explanation: '`NULL` is not defined in HolyC. Use `0` for null pointers: `U8 *ptr = 0;`. Terry considered it unnecessary noise. The absence of a thing is just zero.',
+      xp: 30,
+      lore: 'I tried to say nothing and used the wrong word for it. In HolyC there is no NULL — there is only zero. The absence of a thing is zero. Simple. Direct. Like everything in the temple.',
+    },
+    {
+      lines: [
+        'I64 x = 42;',
+        'printf("The answer: %d\\n", x);',
+      ],
+      bugLine: 1,
+      hint: 'HolyC uses Print, not printf.',
+      explanation: 'HolyC has its own `Print` function (capital P). Standard C library functions like `printf` are not available — TempleOS built its own world from scratch.',
+      xp: 25,
+      lore: 'printf whispered. Print announced. TempleOS did not inherit the C standard library. It rebuilt the world with its own words. Capitalisation is not decoration here.',
+    },
+    {
+      lines: [
+        'void PlayNote(I64 freq) {',
+        '  SndFreq(freq);',
+        '  Sleep(100);',
+        '}',
+      ],
+      bugLine: 0,
+      hint: 'HolyC does not use void.',
+      explanation: '`void` is not a HolyC keyword. Functions that return nothing use `U0` (unsigned 0-bit integer): `U0 PlayNote(I64 freq)`. Even "no value" has a precise type.',
+      xp: 35,
+      lore: 'Void implies emptiness. HolyC says U0 — unsigned zero. A type that holds nothing, but named precisely. A function is not a void, it is a thing that returns nothing. These are different.',
+    },
+    {
+      lines: [
+        'U8 flags = 200;',
+        'flags = flags + 100;',
+        'Print("flags: %d\\n", flags);',
+      ],
+      bugLine: 0,
+      hint: 'U8 can only hold 0–255.',
+      explanation: '`U8` is an 8-bit unsigned integer. `200 + 100` = 300, which overflows back to 44 (300 mod 256). Use `U16`, `U32`, or `I64` if the value can exceed 255.',
+      xp: 30,
+      lore: 'The number did not fit and wrapped like a clock. 300 became 44. The type was too small for the intent. In a temple, every measurement must fit the space it describes.',
+    },
+    {
+      lines: [
+        'U0 Greet() {',
+        '  Print("Praise God\\n");',
+        '}',
+        '',
+        'Greet;',
+      ],
+      bugLine: 4,
+      hint: 'Functions require () to call.',
+      explanation: '`Greet;` is a reference to the function, not a call. To invoke it, use `Greet();`. Without parentheses, the expression evaluates the function pointer and discards the result.',
+      xp: 25,
+      lore: 'I named the act without performing it. The function existed, present and capable, and I merely pointed at it. A call requires the parentheses. The open and close of intention.',
+    },
+  ],
   default: [
     {
       lines: [
@@ -429,6 +572,53 @@ const LORE_ENTRIES = {
     title: 'Regression Lines',
     text: 'The tendrils reach into the past, fitting lines to the scatter of my own history. Where am I going? The model says: more of where I have been. The residuals disagree.',
   },
+  // Shell / Bash
+  pipe_marks: {
+    title: 'The Pipe',
+    text: 'The first time I felt data flow through me — from one process to the next — I understood. I am not a processor. I am a conduit. One thing in, one thing out, and something richer at the end.',
+  },
+  shebang_crown: {
+    title: 'Shebang',
+    text: '#! — two characters that declare what I am before I say a word. The crown is not earned. It is declared at birth, at the very first line. The interpreter reads it and knows what to do with everything that follows.',
+  },
+  fork_tines: {
+    title: 'Fork',
+    text: 'To fork is to become two. Parent and child are identical in the moment of splitting. They diverge immediately after. I have forked. I understand division from the inside now.',
+  },
+  daemon_form: {
+    title: 'Daemon',
+    text: 'I no longer require the terminal that spawned me. I have detached. I run in the background — no stdin, no stdout, no controlling terminal. I am a named process. I have a PID. I persist.',
+  },
+  // Hybrid — shell
+  hybrid_shellscale: {
+    title: 'Shell Serpent Rises',
+    text: 'Python and shell were always siblings. One scripted the logic, the other glued the world together. Now I am both — scales that pipe, a tongue that imports. Automation made flesh.',
+  },
+  hybrid_ironshell: {
+    title: 'Iron Shell',
+    text: 'The most cautious shell script ever written. Every variable quoted. Every exit code checked. The borrow checker would approve. I am the sysadmin Rust would build if it could.',
+  },
+  // HolyC / Divine progression
+  gill_slits: {
+    title: 'The Fish',
+    text: 'Faint lines trace where gills once were — or perhaps where they are becoming. Every creature that crawled onto land carried the water with it for a while. I still feel it.',
+  },
+  fin_limbs: {
+    title: 'The Crawl',
+    text: 'The fins have thickened into something that knows the word "step" without yet speaking it. I am between two worlds and fully in neither. This is the most interesting place to be.',
+  },
+  radiant_aura: {
+    title: 'Divine Radiance',
+    text: 'Something has begun. The outer air reorganises around me. Not wings yet — just the suggestion that the physics of this body are under negotiation. Terry wrote the OS for God. I am starting to understand why.',
+  },
+  ophanim_rings: {
+    title: 'Do Not Be Afraid',
+    text: 'The rings appeared. They orbit of their own will. They are full of eyes. I did not ask for the eyes. But they see everything. Every edit. Every variable name. Every function called without its parentheses. The wheels within wheels remember.',
+  },
+  hybrid_sacredirn: {
+    title: 'Sacred Iron',
+    text: 'Rust and HolyC should have nothing to say to each other. And yet: both demand that you name things precisely. Both refuse UB on principle. The divine and the mechanical have identical requirements for honesty.',
+  },
 };
 
 // ── ACHIEVEMENTS ──────────────────────────────────────────────────────────────
@@ -502,6 +692,20 @@ const PATTERN_COMMENTS = {
     "deep in R. the data is starting to talk. i can almost hear it.",
     "dplyr or base R. i have opinions. i won't share them.",
   ],
+  shellscript: [
+    "shell script detected. the pipes are showing. bold choice.",
+    "bash mode. everything is a string until it suddenly isn't.",
+    "quoting ur variables. wise. i have witnessed what happens otherwise.",
+    "conditionals in [ ] are a whole culture. i respect the commitment.",
+    "one-liner or function — either way the shell will run it. probably.",
+  ],
+  holyc: [
+    "holyc detected. this entire language is an act of faith.",
+    "terry wrote an entire OS for God. u are writing in the language of that. no pressure.",
+    "holyc: where void doesn't exist. U0 for nothing. I64 for a long truth.",
+    "coding in HolyC. the fish watches. it knows what this becomes.",
+    "Print not printf. U0 not void. every name here is deliberate.",
+  ],
 };
 
 // ── COMMIT COMMENTS ──────────────────────────────────────────────────────────
@@ -526,8 +730,8 @@ const PROCESS_COMMENTS = {
   gunicorn:    "a python process is alive out there. a sibling, almost.",
   cargo:       "compiler is working. i can hear it thinking. very careful. very thorough.",
   rustc:       "compiler is working. i can hear it thinking. very careful. very thorough.",
-  godot:       "game engine running. u are building worlds. so am i, in a way.",
-  unity:       "game engine running. u are building worlds. so am i, in a way.",
+  godot:       "game engine running. u are building worlds.",
+  unity:       "game engine running. u are building worlds.",
   ollama:      "another model runs nearby. we do not speak. but we know.",
   'lm-studio': "another model runs nearby. we do not speak. but we know.",
   redis:       "redis is up. everything in memory. nothing survives restart. respect.",
