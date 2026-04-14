@@ -215,6 +215,21 @@ function recalcDominance(state) {
   state.dominantColor = (LANG_TRAITS[dom]||{}).color || '#888888';
 }
 
+const FOOD_STRINGS = {
+  python:'pass', rust:'&str', javascript:'=>{}', typescript:'type',
+  haskell:'\\x->', r:'%>%', lua:'nil;', shellscript:'$()', holyc:'U0;',
+  go:'func', cpp:'*ptr', ruby:':sym', c:'NULL', zig:'@src',
+  elixir:'|>', java:'void', csharp:'var', swift:'let', kotlin:'fun',
+  default:'{;}',
+};
+
+function getFoodStr(state) {
+  const top = Object.entries(state.langCounts).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([l])=>l).filter(l=>FOOD_STRINGS[l]);
+  if (!top.length) return FOOD_STRINGS.default;
+  const pick = (Math.random() < 0.7 || top.length === 1) ? top[0] : top[Math.floor(Math.random()*top.length)];
+  return FOOD_STRINGS[pick] || FOOD_STRINGS.default;
+}
+
 function detectPattern(state, lang, prevLang) {
   const h = new Date().getHours();
   const day = new Date().getDay();
@@ -266,6 +281,7 @@ let ramGremlins = [];
 let ramGremlinInterval = null;
 let statusBarItem = null;
 let statusBarFlickerInterval = null;
+let chaseRunning = false;
 
 function activate(context) {
   creatureState = loadState(context);
@@ -361,14 +377,22 @@ function activate(context) {
             creatureState.hunger = Math.max(0,   creatureState.hunger-5);
             creatureState.xp    += 3;
             break;
+          case 'chase_start':
+            chaseRunning = true;
+            break;
+          case 'chase_abort':
+            chaseRunning = false;
+            saveAndRefresh(context, true);
+            break;
           case 'game_catch': {
             const win = msg.value && msg.value.result === 'win';
             creatureState._playful = true;
             creatureState.mood   = Math.min(100, creatureState.mood + (win ? 20 : 8));
             creatureState.hunger = Math.max(0,   creatureState.hunger - 8);
             creatureState.xp    += win ? 12 : 3;
-            saveAndRefresh(context);
-            setTimeout(() => { creatureState._playful = false; saveAndRefresh(context); }, 8000);
+            context.globalState.update('codemonState_v4', creatureState);
+            setTimeout(() => { chaseRunning = false; saveAndRefresh(context, true); }, win ? 3200 : 2700);
+            setTimeout(() => { creatureState._playful = false; saveAndRefresh(context); }, 11000);
             break;
           }
           case 'rename':
@@ -700,8 +724,9 @@ function activate(context) {
   context.subscriptions.push({dispose:()=>clearInterval(cpuPoll)});
 }
 
-function saveAndRefresh(context) {
+function saveAndRefresh(context, force=false) {
   context.globalState.update('codemonState_v4', creatureState);
+  if (chaseRunning && !force) return;
   if (panel_ref) {
     try { refreshWebview(panel_ref.webview, creatureState); }
     catch (e) { console.error('[codemon] refreshWebview error:', e); }
@@ -771,14 +796,14 @@ function buildEggSVG(extTraits, c) {
   return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)"><ellipse cx="50" cy="56" rx="22" ry="28" fill="${c}18" stroke="${c}" stroke-width="1.5"/><ellipse cx="50" cy="56" rx="14" ry="18" fill="${c}08"/>${glyphSvg}${crack}</g></svg>`;
 }
 
-function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
+function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits, foodStr='{;}') {
   const dim = mood==='sleeping'||mood==='drowsy';
   const happy = mood==='happy';
   const playful = mood==='playful';
   const eyeL = dim?`<line x1="34" y1="44" x2="41" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:playful?`<circle cx="37" cy="43" r="4" fill="${c}"/><circle cx="38.5" cy="41.5" r="1.2" fill="white"/>`:happy?`<path d="M33 43 Q37.5 39 42 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="37" cy="44" r="3" fill="${c}"/>`;
   const eyeR = dim?`<line x1="59" y1="44" x2="66" y2="44" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`:playful?`<circle cx="63" cy="43" r="4" fill="${c}"/><circle cx="64.5" cy="41.5" r="1.2" fill="white"/>`:happy?`<path d="M58 43 Q62.5 39 67 43" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:`<circle cx="63" cy="44" r="3" fill="${c}"/>`;
   const eating = mood==='eating';
-  const eatingSvg = eating ? `<text class="eating-food" x="44" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">{;}</text>` : '';
+  const eatingSvg = eating ? `<text class="eating-food" x="${50 - foodStr.length*2.4}" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">${esc(foodStr)}</text>` : '';
   const mouth = eating
     ? `<circle cx="50" cy="57" r="4" fill="${c}" opacity="0.9"/>`
     : playful?`<path d="M41 55 Q50 64 59 55" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/>`:happy?`<path d="M43 56 Q50 62 57 56" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/>`:dim?`<line x1="44" y1="58" x2="56" y2="58" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`:`<line x1="44" y1="57" x2="56" y2="57" stroke="${c}" stroke-width="1.5" stroke-linecap="round"/>`;
@@ -809,13 +834,13 @@ function buildCreatureSVG(evoIdx, c, bc, mood, features, extTraits) {
   return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,5)]}${featureOverlays(features)}${extO}${eyeL}${eyeR}${mouth}${eatingSvg}${dim?`<text x="56" y="27" font-size="9" fill="${c}" opacity="0.7" font-family="monospace">z</text>`:''}</g></svg>`;
 }
 
-function buildHolyCCreatureSVG(evoIdx, c, bc, mood, features) {
+function buildHolyCCreatureSVG(evoIdx, c, bc, mood, features, foodStr='{;}') {
   const ids = features.map(f => f.featureId);
   const dim = mood === 'sleeping' || mood === 'drowsy';
   const happy = mood === 'happy';
   const playful = mood === 'playful';
   const eating = mood === 'eating';
-  const eatingSvg = eating ? `<text x="44" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">{;}</text>` : '';
+  const eatingSvg = eating ? `<text x="${50 - foodStr.length*2.4}" y="76" font-size="8" fill="${c}" font-family="monospace" opacity="0.9">${esc(foodStr)}</text>` : '';
   const fishEye = dim
     ? `<line x1="27" y1="50" x2="33" y2="50" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>`
     : `<circle cx="30" cy="50" r="3.5" fill="${c}"/><circle cx="29" cy="49" r="1.2" fill="white" opacity="0.8"/>`;
@@ -1036,14 +1061,18 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 /* Chase overlay */
 #chase-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 #chase-overlay.active{display:flex}
-#chase-field{width:220px;height:90px;border:1px solid var(--b);border-radius:4px;position:relative;overflow:hidden;background:var(--s)}
-#chase-ground{position:absolute;bottom:18px;left:0;right:0;height:1px;background:var(--b)}
-#chase-creature{position:absolute;bottom:19px;left:10px;width:22px;height:22px;transition:left 0.08s linear}
-#chase-ball{position:absolute;bottom:22px;width:9px;height:9px;border-radius:50%;background:white;box-shadow:0 0 4px white}
+#chase-field{width:260px;height:100px;border:1px solid var(--b);border-radius:4px;position:relative;overflow:hidden;background:var(--s)}
+#chase-ground{position:absolute;bottom:20px;left:0;right:0;height:1px;background:var(--b)}
+#chase-bg{position:absolute;left:-30px;right:0;top:0;bottom:20px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 28px,${c}22 28px,${c}22 29px);animation:chase-scroll 0.55s linear infinite;pointer-events:none}
+@keyframes chase-scroll{from{background-position-x:0}to{background-position-x:-29px}}
+#chase-creature{position:absolute;bottom:21px;width:22px;height:22px;z-index:2}
+#chase-ball{position:absolute;bottom:22px;left:222px;width:10px;height:10px;border-radius:50%;background:white;box-shadow:0 0 6px white,0 0 12px rgba(255,255,255,0.3);animation:ball-bounce 0.55s ease-in-out infinite alternate;z-index:2}
+@keyframes ball-bounce{from{bottom:22px}to{bottom:46px}}
 #chase-msg{font-family:'VT323',monospace;font-size:18px;color:var(--c);letter-spacing:1px;text-align:center;min-height:24px}
 #chase-hint{font-size:8px;color:var(--d);text-align:center;letter-spacing:1px}
-#chase-result{font-family:'VT323',monospace;font-size:28px;text-align:center;display:none}
-.chase-win{color:#4caf50}
+#chase-result{font-family:'VT323',monospace;font-size:32px;text-align:center;display:none;padding:10px 0;animation:result-pop 0.3s ease-out}
+@keyframes result-pop{from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1}}
+.chase-win{color:#4caf50;text-shadow:0 0 12px #4caf5088}
 .chase-lose{color:var(--d)}
 @keyframes ramshake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px) rotate(-0.4deg)}75%{transform:translateX(2px) rotate(0.4deg)}}
 .sv{font-family:'VT323',monospace;font-size:13px;text-align:right;color:var(--d)}
@@ -1127,7 +1156,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <!-- Creature -->
   <div class="cf">
     ${state.patternComment?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:''}
-    ${hasStartedCoding ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits)) : buildEggSVG(state.installedExtTraits,c)}
+    ${hasStartedCoding ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state))) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
     ${hasStartedCoding && featBadges?`<button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
@@ -1204,12 +1233,13 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 <div id="chase-overlay">
   <div id="chase-msg">press → to chase!</div>
   <div id="chase-field">
+    <div id="chase-bg"></div>
     <div id="chase-ground"></div>
     <svg id="chase-creature" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="60" rx="18" ry="22" fill="${c}30" stroke="${c}" stroke-width="2"/><circle cx="42" cy="48" r="4" fill="${c}"/><circle cx="43.5" cy="46.5" r="1.2" fill="white"/><circle cx="58" cy="48" r="4" fill="${c}"/><circle cx="59.5" cy="46.5" r="1.2" fill="white"/><path d="M41 58 Q50 67 59 58" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
     <div id="chase-ball"></div>
-    <div id="chase-result"></div>
   </div>
-  <div id="chase-hint">arrow right to run &nbsp;|&nbsp; esc to quit</div>
+  <div id="chase-result"></div>
+  <div id="chase-hint">tap → to run &nbsp;|&nbsp; esc to quit</div>
 </div>
 <script>
 const vscode=acquireVsCodeApi();
@@ -1217,18 +1247,20 @@ function s(t,v){vscode.postMessage({type:t,value:v})}
 function tr(){const w=document.getElementById('rw');w.classList.toggle('on');if(w.classList.contains('on'))document.getElementById('ri').focus()}
 function toggleDna(btn){const d=btn.nextElementSibling;const open=d.classList.toggle('open');btn.querySelector('.arr').style.transform=open?'rotate(90deg)':'';btn.setAttribute('aria-expanded',open)}
 // ── CHASE GAME ──
-let chaseActive=false,chaseRaf=null,cX=10,bX=60,bVel=0.8,caught=false,finished=false,chaseFrame=0;
-const FIELD_W=220,BALL_W=9,CREAT_W=22,CATCH_DIST=28,STEADY_FRAMES=420,STEADY_VEL=0.35;
+let chaseActive=false,chaseRaf=null,cX=30,finished=false,chaseFrame=0,chaseMsgState=0;
+const FIELD_W=260,CREAT_W=22,BALL_X=222,DRIFT=0.45,TAP_BOOST=15;
 function openChase(){
   const ov=document.getElementById('chase-overlay');
   ov.classList.add('active');
+  s('chase_start');
   document.getElementById('chase-result').style.display='none';
   document.getElementById('chase-result').textContent='';
   document.getElementById('chase-hint').style.display='';
-  cX=10;bX=70;bVel=0.9;caught=false;finished=false;chaseFrame=0;
+  document.getElementById('chase-ball').style.opacity='';
+  cX=30;finished=false;chaseFrame=0;chaseMsgState=0;
   chaseActive=false;
   if(chaseRaf)cancelAnimationFrame(chaseRaf);
-  _posChase();
+  document.getElementById('chase-creature').style.left=cX+'px';
   ov.focus();
   _countdown(3);
 }
@@ -1241,31 +1273,23 @@ function _countdown(n){
     msg.textContent='GO!';
     chaseActive=true;
     chaseRaf=requestAnimationFrame(_chaseLoop);
-    setTimeout(()=>{ if(!finished) document.getElementById('chase-msg').textContent='press \u2192 fast!'; },600);
+    setTimeout(()=>{ if(!finished&&chaseActive&&chaseMsgState===0) msg.textContent='tap \u2192!'; },800);
   }
-}
-function _posChase(){
-  document.getElementById('chase-creature').style.left=cX+'px';
-  document.getElementById('chase-ball').style.left=bX+'px';
 }
 function _chaseLoop(){
   if(!chaseActive||finished)return;
   chaseFrame++;
-  if(chaseFrame<STEADY_FRAMES){
-    bX+=STEADY_VEL;
-  } else {
-    if(chaseFrame===STEADY_FRAMES) document.getElementById('chase-msg').textContent='it\\'s getting away!';
-    bVel=Math.min(bVel*1.018,7);
-    bX+=bVel;
-  }
-  const dist=bX-cX;
-  if(dist<CATCH_DIST&&bX>40){
-    _endChase(true);return;
-  }
-  if(bX>FIELD_W+20){
-    _endChase(false);return;
-  }
-  _posChase();
+  cX-=DRIFT;
+  const gap=BALL_X-(cX+CREAT_W);
+  const msg=document.getElementById('chase-msg');
+  if(gap<20&&gap>0&&chaseMsgState<3){chaseMsgState=3;msg.textContent='REACH!!'}
+  else if(gap<55&&chaseMsgState<2){chaseMsgState=2;msg.textContent='almost there!'}
+  else if(gap<110&&chaseMsgState<1){chaseMsgState=1;msg.textContent='getting closer!'}
+  if(chaseFrame===480&&chaseMsgState<2) msg.textContent='hurry!!';
+  if(cX+CREAT_W>=BALL_X){_endChase(true);return;}
+  if(cX<0){_endChase(false);return;}
+  if(chaseFrame>600){_endChase(false);return;}
+  document.getElementById('chase-creature').style.left=cX+'px';
   chaseRaf=requestAnimationFrame(_chaseLoop);
 }
 function _endChase(win){
@@ -1276,40 +1300,43 @@ function _endChase(win){
   document.getElementById('chase-hint').style.display='none';
   res.style.display='block';
   if(win){
-    document.getElementById('chase-ball').style.display='none';
+    document.getElementById('chase-ball').style.opacity='0';
     res.className='chase-win';
     res.textContent='\u2605 GOT IT! \u2605';
     msg.textContent='nice catch!';
     s('game_catch',{result:'win'});
+    setTimeout(()=>{
+      document.getElementById('chase-overlay').classList.remove('active');
+      document.getElementById('chase-ball').style.opacity='';
+    },3000);
   } else {
-    res.className='';
-    res.style.color='var(--d)';
-    res.textContent='zooom...';
-    msg.textContent='so close...';
+    res.className='chase-lose';
+    res.textContent='too slow...';
+    msg.textContent='fell behind!';
     s('game_catch',{result:'miss'});
+    setTimeout(()=>{
+      document.getElementById('chase-overlay').classList.remove('active');
+    },2500);
   }
-  setTimeout(()=>{
-    document.getElementById('chase-overlay').classList.remove('active');
-    document.getElementById('chase-ball').style.display='';
-  },2200);
 }
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'){
-    if(document.getElementById('chase-overlay').classList.contains('active')){
+    if(document.getElementById('chase-overlay').classList.contains('active')&&!finished){
       chaseActive=false;finished=true;cancelAnimationFrame(chaseRaf);
       document.getElementById('chase-overlay').classList.remove('active');
-      document.getElementById('chase-ball').style.display='';
+      document.getElementById('chase-ball').style.opacity='';
+      s('chase_abort');
     }
   }
-  if(e.key==='ArrowRight'&&chaseActive&&!finished){
+  if(e.key==='ArrowRight'&&!e.repeat&&chaseActive&&!finished){
     e.preventDefault();
-    cX=Math.min(cX+12,FIELD_W-CREAT_W);
-    _posChase();
+    cX=Math.min(cX+TAP_BOOST,FIELD_W-CREAT_W);
+    document.getElementById('chase-creature').style.left=cX+'px';
   }
 });
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}
 document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter')dr();if(e.key==='Escape')document.getElementById('rw').classList.remove('on')});
-(function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=1500+Math.random()*7000;setTimeout(function(){t.style.display='';setTimeout(function(){t.style.display='none';f()},350)},d)}f()})();
+(function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=1500+Math.random()*7000;setTimeout(function(){const b=document.body.classList;if(!b.contains('mood-sleeping')&&!b.contains('mood-drowsy')){t.style.display='';setTimeout(function(){t.style.display='none';f()},350)}else{f()}},d)}f()})();
 </script></body></html>`;
 }
 
