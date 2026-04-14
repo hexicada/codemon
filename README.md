@@ -9,7 +9,7 @@ A sidebar virtual pet that demands your commit-ment!
 Your Codemon lives in the VS Code sidebar. 
 
 - **When it hatches its type will be based on the extensions you have installed**
-each extension adds a physical trait (Rust Analyzer → armored shell, GitLens → ancient eyes, Copilot → twin pupils, etc.)
+each extension adds a physical trait (Rust Analyzer → crab legs, GitLens → ancient eyes, Copilot → twin pupils, etc.)
 
 It evolves based on:
 - **How much you code** 
@@ -59,6 +59,7 @@ Having certain extensions installed gives your creature visible traits:
 - **Feed** — feed your codemon twice per day, 
 (default times 9.30am and 3.30pm, but as long as you feed them a few times, they are fine... and nothing bad will happen...)
 - **Play** — debugging games in your favourite languages
+- **Chase Ball Game** 
 - **Idle too long** — your creature gets drowsy, then sleeps
 
 ## Installation
@@ -69,6 +70,6 @@ Having certain extensions installed gives your creature visible traits:
 2. Reload VS Code
 3. Look for the Codemon icon in the Activity Bar (left sidebar)
 
-No build step required, pure JS.
+
 
 
