@@ -1091,6 +1091,7 @@ button:active{transform:scale(.96)}
 hr{border:none;border-top:1px solid var(--b)}
 .rw{display:none;gap:4px}.rw.on{display:flex}
 .rw input{flex:1;background:var(--s);border:1px solid var(--c);color:var(--t);font-family:'Space Mono',monospace;font-size:10px;padding:4px 6px;border-radius:3px;outline:none}
+.speech-bubble-wrap{width:100%;box-sizing:border-box;margin-bottom:2px}
 /* Pattern comment speech bubble */
 .speech-bubble{position:relative;background:var(--s);border:1px solid var(--c)55;border-radius:6px;padding:7px 26px 7px 9px;font-size:9.5px;line-height:1.55;color:var(--t);width:100%;box-sizing:border-box;animation:bubble-fade 10s forwards}
 @keyframes bubble-fade{0%,70%{opacity:1}100%{opacity:0;pointer-events:none}}
@@ -1155,7 +1156,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 
   <!-- Creature -->
   <div class="cf">
-    ${state.patternComment?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:''}
+    <div class="speech-bubble-wrap" style="${state.patternComment?'min-height:52px':''}">` + (state.patternComment && !state._eating && !state._nomnom && !state._burping ?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:'') + `</div>
     ${hasStartedCoding ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state))) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
