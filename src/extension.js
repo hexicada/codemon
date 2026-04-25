@@ -1,5 +1,11 @@
 const vscode = require('vscode');
 const { exec } = require('child_process');
+let buildCreatureForLang = () => null;
+try {
+  ({ buildCreatureForLang } = require('./creatures/index'));
+} catch (err) {
+  console.error('[codemon] failed to load creatures/index, using fallback renderer:', err);
+}
 const { DEBUG_PUZZLES, LORE_ENTRIES, ACHIEVEMENTS, PATTERN_COMMENTS, COMMIT_COMMENTS, PROCESS_COMMENTS, CPU_COMMENTS } = require('./data');
 
 // ── LANG / HYBRID / EXT DEFINITIONS ──────────────────────────────────────────
@@ -58,6 +64,19 @@ const EVOLUTIONS = [
   {name:'Paradigm',   minXP:11000, description:'Beyond form. A living pattern of pure intent.'},
 ];
 
+const PRESTIGE_NAMES = [
+  'Garrison',
+  'Pug',
+  'Sylvest',
+  'Morreth',
+  'Larry',
+  'Vyvan',
+  'Moog',
+  'Glindel',
+  'Mirrae',
+  'Bruce',
+];
+
 // ── HELPERS ───────────────────────────────────────────────────────────────────
 
 function esc(str) {
@@ -79,6 +98,13 @@ function blendColors(hexes) {
 }
 
 function pickRandom(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+const PATTERN_COMMENT_TTL_MS = 10000;
+const PATTERN_COMMENT_DISMISS_COOLDOWN_MS = 30000;
+
+function canShowPatternComment(state) {
+  return !state.patternCommentDismissedUntil || Date.now() >= state.patternCommentDismissedUntil;
+}
 
 function getPuzzleForState(state) {
   const lang = state.puzzleLang || state.dominantLang;
@@ -114,7 +140,10 @@ function loadState(context) {
     saved.bugsAttempted         = saved.bugsAttempted         || 0;
     saved.achievements          = saved.achievements          || [];
     saved.unlockedLore          = saved.unlockedLore          || [];
+    saved.unlockedGhost         = saved.unlockedGhost         || false;
     saved.patternComment        = saved.patternComment        || null;
+    saved.patternCommentExpiresAt = Number.isFinite(saved.patternCommentExpiresAt) ? saved.patternCommentExpiresAt : null;
+    saved.patternCommentDismissedUntil = Number.isFinite(saved.patternCommentDismissedUntil) ? saved.patternCommentDismissedUntil : null;
     saved.codedPastMidnight     = saved.codedPastMidnight     || false;
     saved.codedOnWeekend        = saved.codedOnWeekend        || false;
     saved.longestSessionMinutes = saved.longestSessionMinutes || 0;
@@ -144,7 +173,8 @@ function loadState(context) {
     lastActive:Date.now(), name:'Unnamed',
     lastMorningFeedDate:null, lastAfternoonFeedDate:null,
     bugsFound:0, bugsAttempted:0,
-    achievements:[], unlockedLore:[], patternComment:null,
+    achievements:[], unlockedLore:[], unlockedGhost:false, patternComment:null,
+    patternCommentExpiresAt:null, patternCommentDismissedUntil:null,
     codedPastMidnight:false, codedOnWeekend:false,
     longestSessionMinutes:0, sessionStartTime:null,
     feedStreak:0, lastFeedDate:null,
@@ -434,6 +464,8 @@ function activate(context) {
             break;
           case 'dismiss_comment':
             creatureState.patternComment = null;
+            creatureState.patternCommentExpiresAt = null;
+            creatureState.patternCommentDismissedUntil = Date.now() + PATTERN_COMMENT_DISMISS_COOLDOWN_MS;
             break;
           case 'prestige': {
             // Stop feral mode before reset so intervals are cleared cleanly
@@ -452,9 +484,10 @@ function activate(context) {
             };
             // Carry forward one DNA trait (most dominant lang's first unlocked feature)
             const inheritedFeature = creatureState.unlockedFeatures[0] || null;
-            const prevName = creatureState.name;
+            const nextName = pickRandom(PRESTIGE_NAMES);
             const prevGens = [...creatureState.generations, ancestor];
             const prevGen  = creatureState.generation + 1;
+            const prevLore = [...creatureState.unlockedLore];
             // Reset all mutable fields, preserve name + lineage
             creatureState = {
               xp:0, hunger:100, mood:80,
@@ -462,10 +495,11 @@ function activate(context) {
               installedExtTraits:creatureState.installedExtTraits, dominantLang:null,
               dominantColor: inheritedFeature ? inheritedFeature.color : '#888888',
               blendColor: inheritedFeature ? inheritedFeature.color : '#888888',
-              lastActive:Date.now(), name: prevName,
+              lastActive:Date.now(), name: nextName,
               lastMorningFeedDate:null, lastAfternoonFeedDate:null,
               bugsFound:0, bugsAttempted:0,
-              achievements:[], unlockedLore:[],
+              achievements:[], unlockedLore: prevLore, unlockedGhost: creatureState.unlockedGhost || false,
+              patternCommentExpiresAt:null, patternCommentDismissedUntil:null,
               patternComment: `I remember ${ancestor.name}. Something of them remains.`,
               codedPastMidnight:false, codedOnWeekend:false,
               longestSessionMinutes:0, sessionStartTime:null,
@@ -522,21 +556,29 @@ function activate(context) {
       if (lore) vscode.window.showInformationMessage(`📖 New lore: "${lore.title}"`);
     });
 
-    // Pattern comment (only if none active)
-    if (!creatureState.patternComment) {
+    // Always evaluate pattern flags (codedPastMidnight/codedOnWeekend),
+    // but only display a pattern comment when none is active.
+    const patternComment = detectPattern(creatureState, lang, prevLang);
+    if (!creatureState.patternComment && canShowPatternComment(creatureState)) {
       const totalEdits = Object.values(creatureState.langCounts).reduce((a,b)=>a+b,0);
       if (totalEdits === 1 && PATTERN_COMMENTS.firstEdit) {
         creatureState.patternComment = pickRandom(PATTERN_COMMENTS.firstEdit);
-      } else {
-        const comment = detectPattern(creatureState, lang, prevLang);
-        if (comment) creatureState.patternComment = comment;
+      } else if (patternComment) {
+        creatureState.patternComment = patternComment;
       }
     }
+
+    // One-time ghost unlock when late-night coding has been detected.
+    if (!creatureState.unlockedGhost && creatureState.codedPastMidnight) {
+      creatureState.unlockedGhost = true;
+      vscode.window.showInformationMessage(`👻 ${creatureState.name} has taken a new form...`);
+    }
+
     prevLang = lang;
 
     // Long file detection
     const lineCount = event.document.lineCount;
-    if (lineCount > 500 && Math.random() < 0.01 && !creatureState.patternComment) {
+    if (lineCount > 500 && Math.random() < 0.01 && !creatureState.patternComment && canShowPatternComment(creatureState)) {
       creatureState.patternComment = pickRandom(PATTERN_COMMENTS.longFile);
     }
 
@@ -725,6 +767,21 @@ function activate(context) {
 }
 
 function saveAndRefresh(context, force=false) {
+  if (!creatureState.unlockedGhost && creatureState.codedPastMidnight) {
+    creatureState.unlockedGhost = true;
+  }
+
+  const now = Date.now();
+  if (creatureState.patternComment) {
+    if (!Number.isFinite(creatureState.patternCommentExpiresAt)) {
+      creatureState.patternCommentExpiresAt = now + PATTERN_COMMENT_TTL_MS;
+    } else if (now >= creatureState.patternCommentExpiresAt) {
+      creatureState.patternComment = null;
+      creatureState.patternCommentExpiresAt = null;
+    }
+  } else {
+    creatureState.patternCommentExpiresAt = null;
+  }
   context.globalState.update('codemonState_v4', creatureState);
   if (chaseRunning && !force) return;
   if (panel_ref) {
@@ -778,7 +835,7 @@ function featureOverlays(features) {
   if (ids.includes('void_shimmer')||ids.includes('hybrid_voidarc')) out.push(`<circle cx="50" cy="50" r="24" fill="none" stroke="#5e5086" stroke-width="0.6" stroke-dasharray="2,6" opacity="0.4"/>`);
   if (ids.includes('template_tail')) out.push(`<line x1="50" y1="80" x2="50" y2="87" stroke="#f34b7d" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="87" x2="44" y2="95" stroke="#f34b7d" stroke-width="1" stroke-linecap="round"/><line x1="50" y1="87" x2="56" y2="95" stroke="#f34b7d" stroke-width="1" stroke-linecap="round"/>`);
   return out.join('\n');
-}
+}        
 
 function buildEggSVG(extTraits, c) {
   // Collect glyph decorations from installed extension traits
@@ -871,6 +928,7 @@ function buildHolyCCreatureSVG(evoIdx, c, bc, mood, features, foodStr='{;}') {
   if (ids.includes('ophanim_rings')) over.push(`<ellipse cx="50" cy="50" rx="36" ry="9" fill="none" stroke="${c}" stroke-width="0.4" stroke-dasharray="1.5,5" opacity="0.25" transform="rotate(-30,50,50)"/>`);
   return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><filter id="glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#glow)">${bodies[Math.min(evoIdx,5)]}${over.join('')}</g></svg>`;
 }
+
 
 // ── HTML ──────────────────────────────────────────────────────────────────────
 
@@ -1093,8 +1151,7 @@ hr{border:none;border-top:1px solid var(--b)}
 .rw input{flex:1;background:var(--s);border:1px solid var(--c);color:var(--t);font-family:'Space Mono',monospace;font-size:10px;padding:4px 6px;border-radius:3px;outline:none}
 .speech-bubble-wrap{width:100%;box-sizing:border-box;margin-bottom:2px}
 /* Pattern comment speech bubble */
-.speech-bubble{position:relative;background:var(--s);border:1px solid var(--c)55;border-radius:6px;padding:7px 26px 7px 9px;font-size:9.5px;line-height:1.55;color:var(--t);width:100%;box-sizing:border-box;animation:bubble-fade 10s forwards}
-@keyframes bubble-fade{0%,70%{opacity:1}100%{opacity:0;pointer-events:none}}
+.speech-bubble{position:relative;background:var(--s);border:1px solid var(--c)55;border-radius:6px;padding:7px 26px 7px 9px;font-size:9.5px;line-height:1.55;color:var(--t);width:100%;box-sizing:border-box}
 .speech-bubble::after{content:'';position:absolute;bottom:-7px;left:22px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:7px solid var(--c)55}
 .speech-bubble::before{content:'';position:absolute;bottom:-5px;left:23px;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid var(--s)}
 .bubble-name{font-size:8px;color:var(--c);text-transform:lowercase;letter-spacing:0.5px;margin-bottom:3px;opacity:0.8}
@@ -1157,10 +1214,10 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <!-- Creature -->
   <div class="cf">
     <div class="speech-bubble-wrap" style="${state.patternComment?'min-height:52px':''}">` + (state.patternComment && !state._eating && !state._nomnom && !state._burping ?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:'') + `</div>
-    ${hasStartedCoding ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state))) : buildEggSVG(state.installedExtTraits,c)}
+    ${(hasStartedCoding || state.unlockedGhost) ? (buildCreatureForLang(state,evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state)) || (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state)))) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
-    ${hasStartedCoding && featBadges?`<button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
+    ${hasStartedCoding && featBadges?`<button class="dna-toggle" data-key="dna" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
     <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
   </div>
 
@@ -1181,7 +1238,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Pet</button></div>
   <button onclick="openChase()" style="width:100%;margin-top:5px;border-color:${c}44;font-size:9px">⬤ Chase Ball</button>
   <div id="ng-confirm" style="display:none;background:var(--s);border:1px solid #f4433644;border-radius:4px;padding:8px 10px;font-size:9px;color:var(--d)">
-    Retire ${esc(state.name)} and begin a new generation.<br/>Your name and one DNA trait carry forward.
+    Retire ${esc(state.name)} and begin a new generation.<br/>One DNA trait will carry forward. Name your successor. 
     <div style="display:flex;gap:5px;margin-top:6px">
       <button onclick="s('prestige')" style="flex:1;border-color:#f4433688;color:#f44336">✦ Prestige</button>
       <button onclick="document.getElementById('ng-confirm').style.display='none'" style="flex:1">Cancel</button>
@@ -1203,7 +1260,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <hr/>
 
   <!-- Codex -->
-  <button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>codex</button>
+  <button class="dna-toggle" data-key="codex" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>codex</button>
   <div class="dna-drawer">
   <div class="section-box" style="width:100%">
     <div class="sec-title">evolution stages</div>
@@ -1218,7 +1275,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <hr/>
 
   <!-- Achievements -->
-  <button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>achievements (${state.achievements.length})</button>
+  <button class="dna-toggle" data-key="ach" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>achievements (${state.achievements.length})</button>
   <div class="dna-drawer">
   <div class="ach-grid" style="width:100%">${achHtml}</div>
   </div>
@@ -1226,8 +1283,34 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <hr/>
 
   <!-- Lore -->
-  <button class="dna-toggle" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lore (${state.unlockedLore.length})</button>
+  <button class="dna-toggle" data-key="lore" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lore (${state.unlockedLore.length})</button>
   <div class="dna-drawer">${loreHtml}</div>
+
+  ${state.generations && state.generations.length > 0 ? `
+  <hr/>
+  <!-- Lineage -->
+  <button class="dna-toggle" data-key="lineage" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lineage (${state.generations.length})</button>
+  <div class="dna-drawer">
+    ${[...state.generations].reverse().map((g, i) => {
+      const retiredDate = new Date(g.retiredAt).toLocaleDateString('en-NZ', {day:'numeric', month:'short', year:'numeric'});
+      const langLabel = g.dominantLang || 'unknown';
+      const featList = g.features && g.features.length ? g.features.map(f => f.label).join(', ') : 'none';
+      return `<div style="border:1px solid var(--b);border-radius:4px;padding:7px 9px;margin-bottom:6px;font-size:9px;color:var(--d)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+          <span style="font-size:10px;color:var(--fg);font-weight:600">${esc(g.name)}</span>
+          <span style="opacity:0.5">gen ${g.generation + 1}</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+          <span>⬡ ${g.xp >= 1000 ? (g.xp/1000).toFixed(1)+'k' : g.xp} xp</span>
+          <span>⚙ ${g.bugsFound||0} bugs</span>
+          <span>↑ ${g.totalCommits||0} commits</span>
+        </div>
+        <div style="margin-bottom:2px">dominant: <span style="color:${g.dominantColor||'#888'}">${langLabel}</span></div>
+        <div style="margin-bottom:2px;opacity:0.7">traits: ${esc(featList)}</div>
+        <div style="opacity:0.4">retired ${retiredDate}</div>
+      </div>`;
+    }).join('')}
+  </div>` : ''}
 
 </div>
 
@@ -1245,8 +1328,9 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 <script>
 const vscode=acquireVsCodeApi();
 function s(t,v){vscode.postMessage({type:t,value:v})}
+(function(){const st=vscode.getState()||{};document.querySelectorAll('.dna-toggle[data-key]').forEach(function(btn){const k=btn.getAttribute('data-key');if(st[k]){const d=btn.nextElementSibling;d.classList.add('open');btn.querySelector('.arr').style.transform='rotate(90deg)';btn.setAttribute('aria-expanded','true');}});})();
 function tr(){const w=document.getElementById('rw');w.classList.toggle('on');if(w.classList.contains('on'))document.getElementById('ri').focus()}
-function toggleDna(btn){const d=btn.nextElementSibling;const open=d.classList.toggle('open');btn.querySelector('.arr').style.transform=open?'rotate(90deg)':'';btn.setAttribute('aria-expanded',open)}
+function toggleDna(btn){const d=btn.nextElementSibling;const open=d.classList.toggle('open');btn.querySelector('.arr').style.transform=open?'rotate(90deg)':'';btn.setAttribute('aria-expanded',open);const k=btn.getAttribute('data-key');if(k){const st=vscode.getState()||{};st[k]=open;vscode.setState(st);}}
 // ── CHASE GAME ──
 let chaseActive=false,chaseRaf=null,cX=30,finished=false,chaseFrame=0,chaseMsgState=0;
 const FIELD_W=260,CREAT_W=22,BALL_X=222,DRIFT=0.45,TAP_BOOST=15;

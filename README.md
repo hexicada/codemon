@@ -70,6 +70,6 @@ Having certain extensions installed gives your creature visible traits:
 2. Reload VS Code
 3. Look for the Codemon icon in the Activity Bar (left sidebar)
 
-
+   
 
 
