@@ -163,6 +163,7 @@ function loadState(context) {
     saved.inheritedFeature      = saved.inheritedFeature      || null;
     saved.starvedSince          = saved.starvedSince           != null ? saved.starvedSince : null;
     saved.isEatingRam           = saved.isEatingRam            || false;
+    saved.feralSince            = saved.feralSince              != null ? saved.feralSince : null;
     saved._playful              = false;
     return saved;
   }
@@ -182,7 +183,7 @@ function loadState(context) {
     _lastPuzzleHint: null,
     totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
     generation:0, generations:[], inheritedFrom:null, inheritedFeature:null,
-    starvedSince:null, isEatingRam:false, _playful:false,
+    starvedSince:null, isEatingRam:false, feralSince:null, _playful:false,
   };
 }
 
@@ -323,6 +324,7 @@ function activate(context) {
   function startEatingRam() {
     if (creatureState.isEatingRam) return;
     creatureState.isEatingRam = true;
+    creatureState.feralSince = Date.now();
     const feralLines = [
       `ur cpu looks delicious. *crunch*`,
       `found ur heap. eating it now. don't mind me`,
@@ -357,6 +359,7 @@ function activate(context) {
     if (!creatureState.isEatingRam) return;
     creatureState.isEatingRam = false;
     creatureState.starvedSince = null;
+    creatureState.feralSince = null;
     if (ramGremlinInterval) { clearInterval(ramGremlinInterval); ramGremlinInterval = null; }
     if (statusBarFlickerInterval) { clearInterval(statusBarFlickerInterval); statusBarFlickerInterval = null; }
     ramGremlins = [];
@@ -388,6 +391,17 @@ function activate(context) {
             }
             if (creatureState.isEatingRam) stopEatingRam();
             else if (creatureState.starvedSince) creatureState.starvedSince = null;
+            if (creatureState.unlockedGhost) {
+              creatureState.unlockedGhost = false;
+              creatureState.feralSince = null;
+              creatureState.patternComment = pickRandom([
+                `wow i have to b so melodramatic to get some food around here`,
+                `three days. THREE DAYS. and all it took was u clicking a button`,
+                `back from the dead specifically to complain about ur feeding schedule`,
+                `u let me go full ghost. over. kibble. i have noted this.`,
+                `ethereal form: relinquished. resentment: retained.`,
+              ]);
+            }
             creatureState.hunger = Math.min(100, creatureState.hunger+20);
             const hitFull = creatureState.hunger >= 100;
             if (!isSleeping) {
@@ -568,11 +582,7 @@ function activate(context) {
       }
     }
 
-    // One-time ghost unlock when late-night coding has been detected.
-    if (!creatureState.unlockedGhost && creatureState.codedPastMidnight) {
-      creatureState.unlockedGhost = true;
-      vscode.window.showInformationMessage(`👻 ${creatureState.name} has taken a new form...`);
-    }
+    // Ghost unlock is handled in the decay interval (feral duration check).
 
     prevLang = lang;
 
@@ -617,7 +627,17 @@ function activate(context) {
       const starvedMs = Date.now() - creatureState.starvedSince;
       if (starvedMs >= 60 * 60 * 1000 && !creatureState.isEatingRam) {
         startEatingRam();
-      } else if (!creatureState.isEatingRam && !creatureState.patternComment) {
+      }
+      // Ghost unlock: 72h feral
+      if (!creatureState.unlockedGhost && creatureState.isEatingRam && creatureState.feralSince) {
+        const feralMs = Date.now() - creatureState.feralSince;
+        if (feralMs >= 72 * 60 * 60 * 1000) {
+          creatureState.unlockedGhost = true;
+          stopEatingRam();
+          vscode.window.showInformationMessage(`👻 ${creatureState.name} has crossed over...`);
+        }
+      }
+      if (!creatureState.isEatingRam && !creatureState.patternComment) {
         creatureState.patternComment = pickRandom([
           `*stares at u with hollow eyes* feed. me.`,
           `hunger: 0. will: remaining. barely.`,
@@ -767,10 +787,6 @@ function activate(context) {
 }
 
 function saveAndRefresh(context, force=false) {
-  if (!creatureState.unlockedGhost && creatureState.codedPastMidnight) {
-    creatureState.unlockedGhost = true;
-  }
-
   const now = Date.now();
   if (creatureState.patternComment) {
     if (!Number.isFinite(creatureState.patternCommentExpiresAt)) {
@@ -1196,6 +1212,14 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 .sl2{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.02) 2px,rgba(0,0,0,.02) 4px);pointer-events:none;z-index:999}
 /* Stats row */
 .stat-row-inline{display:flex;justify-content:space-between;font-size:9px;color:var(--d);margin-top:2px}
+@keyframes creature-blink{0%,44%{opacity:0}45%,48%{opacity:1}49%,74%{opacity:0}75%,93%{opacity:1}94%,100%{opacity:0}}
+@keyframes creature-blink-half{0%,13%{opacity:0}14%,44%{opacity:1}45%,48%{opacity:0}49%,64%{opacity:1}65%,68%{opacity:0}69%,74%{opacity:1}75%,93%{opacity:0}94%{opacity:1}95%,100%{opacity:0}}
+.eye-container .eyes-open{opacity:0}.eye-container .eyes-half{opacity:1}.eye-container .eyes-closed{opacity:0}
+.eye-container.normal .eyes-closed{animation:creature-blink 7s infinite}
+.eye-container.normal .eyes-open{animation:creature-blink 7s infinite;animation-delay:1.4s}
+.eye-container.normal .eyes-half{animation:creature-blink-half 7s infinite}
+.eye-container.eating .eyes-half{opacity:1}.eye-container.eating .eyes-open{opacity:0}.eye-container.eating .eyes-closed{opacity:0}
+.eye-container.dim .eyes-half{opacity:0}.eye-container.dim .eyes-open{opacity:0}.eye-container.dim .eyes-closed{opacity:1}
 </style></head><body>
 <div class="sl2"></div>
 <div class="w mood-${mood}">
@@ -1214,7 +1238,7 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
   <!-- Creature -->
   <div class="cf">
     <div class="speech-bubble-wrap" style="${state.patternComment?'min-height:52px':''}">` + (state.patternComment && !state._eating && !state._nomnom && !state._burping ?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:'') + `</div>
-    ${(hasStartedCoding || state.unlockedGhost) ? (buildCreatureForLang(state,evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state)) || (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state)))) : buildEggSVG(state.installedExtTraits,c)}
+    ${(hasStartedCoding || state.unlockedGhost) ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureForLang(state.dominantLang,evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state),state.unlockedGhost)) : buildEggSVG(state.installedExtTraits,c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
     ${hasStartedCoding && featBadges?`<button class="dna-toggle" data-key="dna" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}

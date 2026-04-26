@@ -1,6 +1,7 @@
 'use strict';
 
 const { buildGhostCreatureSVG } = require('./ghost');
+const { buildBaseCreatureSVG } = require('./base');
 
 // ── Creature router ───────────────────────────────────────────────────────────
 // To add a new creature:
@@ -8,11 +9,9 @@ const { buildGhostCreatureSVG } = require('./ghost');
 //   2. require it here
 //   3. Add one line to the if-chain below
 
-function buildCreatureForLang(state, evoIdx, c, bc, mood, features, extTraits, foodStr) {
-  if (state.unlockedGhost) {
-    return buildGhostCreatureSVG(evoIdx, c, bc, mood, features, foodStr);
-  }
-  return null;
+function buildCreatureForLang(dominantLang, evoIdx, c, bc, mood, features, extTraits, foodStr, unlockedGhost) {
+  if (unlockedGhost) return buildGhostCreatureSVG(evoIdx, c, bc, mood, features, foodStr);
+  return buildBaseCreatureSVG(evoIdx, c, bc, mood, features, extTraits, dominantLang, foodStr);
 }
 
 module.exports = { buildCreatureForLang };
