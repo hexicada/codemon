@@ -93,6 +93,41 @@ function buildBaseCreatureSVG(evoIdx, c, bc, mood, features, extTraits, dominant
     <path d="M44.41,61.40 C44.64,60.78 45.25,60.26 46.32,59.38 C54.91,58.42 57.08,59.99 57.63,60.98 C57.92,62.78 57.92,62.78 57.92,62.78"
       fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>`;
 
+  // ── Egg body (evoIdx 0) ────────────────────────────────────────────────────
+  const eggBody = `
+    <ellipse cx="50" cy="71" rx="21" ry="15" fill="${c}14" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M33.5,66.5 C34.2,64.8 35.1,63.6 35.1,63.6 C35.6,64.9 34.9,66.2 34.9,66.2"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    <path d="M65.0,67.0 C64.1,65.1 63.5,63.9 63.5,63.9 C62.9,65.3 63.7,66.5 63.7,66.5"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    <path d="M29.0,69.5 C27.2,69.8 26.4,70.2 26.2,70.6"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M71.2,69.8 C72.8,70.1 73.6,70.5 73.9,70.9"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>`;
+
+  // ── Glitch body (evoIdx 1) ─────────────────────────────────────────────────
+  const glitchBody = `
+    <path d="M45.97,59.52 C45.05,59.33 44.03,62.65 45.29,64.84 C46.15,66.26 50.38,68.08 51.77,67.69 C52.58,67.44 55.34,65.57 56.41,64.19 C56.85,63.60 57.18,61.01 56.54,59.21"
+      fill="${c}15" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M43.44,59.33 C42.84,59.62 41.57,60.44 39.44,61.87 C39.32,62.31 39.50,62.89 39.50,62.89"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M38.86,62.99 C39.77,63.33 40.81,62.80 41.82,62.27"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M42.75,60.22 C41.80,61.10 40.80,61.80 39.80,62.60"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M57.29,58.84 C58.24,58.94 59.38,59.57 61.63,60.49"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M58.49,58.48 C60.10,59.60 61.00,60.30 61.80,61.50"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M45.96,65.92 C45.40,66.35 45.80,68.50 46.00,70.00"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M44.79,64.93 C45.03,65.95 45.60,68.00 46.00,70.00"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M55.91,65.33 C55.66,65.84 55.40,67.80 55.30,70.00"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M56.06,65.34 C55.64,67.50 55.40,68.60 55.30,70.00"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>`;
+
   // ── Default arms ───────────────────────────────────────────────────────────
   const arms = `
     <path d="M43.44,59.33 C42.84,59.62 41.57,60.44 39.44,61.87 C39.32,62.31 39.50,62.89 39.50,62.89"
@@ -131,6 +166,120 @@ function buildBaseCreatureSVG(evoIdx, c, bc, mood, features, extTraits, dominant
     <path d="M54.93,72.44 C54.54,73.83 54.54,73.83"
       fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>`;
 
+  // ── Archetype body (evoIdx 3+) ─────────────────────────────────────────────
+  const archetypeBody = `
+    <!-- Bug wings (cicada/bee style) — two pairs, upper larger -->
+    <!-- Upper left wing -->
+    <path d="M45.0,61.0 C38.0,54.0 24.0,50.0 18.0,55.0 C13.0,59.0 16.0,68.0 26.0,68.0 C33.0,68.0 40.0,65.0 44.0,63.0 Z"
+      fill="${bc}18" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+    <!-- Upper left wing veins -->
+    <path d="M44.0,62.0 C36.0,59.0 27.0,57.0 20.0,58.0"
+      fill="none" stroke="${c}" stroke-width="0.70" stroke-linecap="round" stroke-linejoin="round" opacity="0.40"/>
+    <path d="M42.0,64.0 C35.0,63.5 28.0,63.0 22.0,64.5"
+      fill="none" stroke="${c}" stroke-width="0.60" stroke-linecap="round" stroke-linejoin="round" opacity="0.30"/>
+    <path d="M40.0,61.5 C34.0,57.5 26.0,54.5 19.5,56.5"
+      fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"/>
+    <!-- Upper right wing -->
+    <path d="M55.0,61.0 C62.0,54.0 76.0,50.0 82.0,55.0 C87.0,59.0 84.0,68.0 74.0,68.0 C67.0,68.0 60.0,65.0 56.0,63.0 Z"
+      fill="${bc}18" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
+    <!-- Upper right wing veins -->
+    <path d="M56.0,62.0 C64.0,59.0 73.0,57.0 80.0,58.0"
+      fill="none" stroke="${c}" stroke-width="0.70" stroke-linecap="round" stroke-linejoin="round" opacity="0.40"/>
+    <path d="M58.0,64.0 C65.0,63.5 72.0,63.0 78.0,64.5"
+      fill="none" stroke="${c}" stroke-width="0.60" stroke-linecap="round" stroke-linejoin="round" opacity="0.30"/>
+    <path d="M60.0,61.5 C66.0,57.5 74.0,54.5 80.5,56.5"
+      fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"/>
+    <!-- Lower left wing (smaller, angled down) -->
+    <path d="M44.5,65.0 C38.0,64.0 27.0,67.0 24.0,73.0 C22.0,77.0 25.5,80.0 32.0,77.0 C37.0,75.0 42.0,70.0 44.5,67.0 Z"
+      fill="${bc}12" stroke="${c}" stroke-width="1.10" stroke-linecap="round" stroke-linejoin="round" opacity="0.70"/>
+    <!-- Lower left wing vein -->
+    <path d="M43.5,66.0 C37.0,67.0 29.0,70.5 25.5,75.0"
+      fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
+    <!-- Lower right wing (smaller, angled down) -->
+    <path d="M55.5,65.0 C62.0,64.0 73.0,67.0 76.0,73.0 C78.0,77.0 74.5,80.0 68.0,77.0 C63.0,75.0 58.0,70.0 55.5,67.0 Z"
+      fill="${bc}12" stroke="${c}" stroke-width="1.10" stroke-linecap="round" stroke-linejoin="round" opacity="0.70"/>
+    <!-- Lower right wing vein -->
+    <path d="M56.5,66.0 C63.0,67.0 71.0,70.5 74.5,75.0"
+      fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
+    <!-- Vestigial back arms (left) -->
+    <path d="M43.0,62.0 C38.0,63.0 32.0,64.5 29.0,65.0"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    <path d="M29.0,65.0 C28.5,66.0 29.5,67.5 30.0,68.0"
+      fill="none" stroke="${c}" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+    <!-- Vestigial back arms (right) -->
+    <path d="M57.0,62.0 C62.0,63.0 68.0,64.5 71.0,65.0"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
+    <path d="M71.0,65.0 C71.5,66.0 70.5,67.5 70.0,68.0"
+      fill="none" stroke="${c}" stroke-width="1.20" stroke-linecap="round" stroke-linejoin="round" opacity="0.45"/>
+    <!-- Chest/torso -->
+    <path d="M39.0,60.5 C38.5,63.0 38.0,68.0 38.5,72.5 C39.5,75.5 42.0,77.5 50.0,77.5 C58.0,77.5 60.5,75.5 61.5,72.5 C62.0,68.0 61.5,63.0 61.0,60.5 C59.5,58.5 55.0,57.5 50.0,57.5 C45.0,57.5 40.5,58.5 39.0,60.5 Z"
+      fill="${c}20" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M40.0,64.0 C44.0,64.5 56.0,64.5 60.0,64.0"
+      fill="none" stroke="${c}" stroke-width="1.10" stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+    <path d="M40.5,68.0 C44.0,68.5 56.0,68.5 59.5,68.0"
+      fill="none" stroke="${c}" stroke-width="1.00" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"/>
+    <!-- Neck connectors -->
+    <path d="M44.5,58.0 C44.0,56.0 44.5,59.0 44.5,59.0"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+    <path d="M55.5,58.0 C56.0,56.0 55.5,59.0 55.5,59.0"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/>
+    <!-- Left arm: upper -->
+    <path d="M39.5,62.0 C35.0,61.5 29.5,61.5 26.0,62.0"
+      fill="none" stroke="${c}" stroke-width="1.90" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Left elbow -->
+    <circle cx="26.0" cy="62.0" r="1.6" fill="none" stroke="${c}" stroke-width="1.20" opacity="0.6"/>
+    <!-- Left arm: forearm -->
+    <path d="M26.0,62.0 C24.5,63.5 23.0,65.5 22.0,68.0"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Left hand -->
+    <path d="M22.0,68.0 C21.0,69.5 20.5,71.0 20.5,71.0"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22.0,68.0 C20.5,68.5 19.5,69.5 19.5,69.5"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22.5,68.5 C22.0,70.0 21.5,70.5 21.5,70.5"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Right arm: upper -->
+    <path d="M60.5,62.0 C65.0,61.5 70.5,61.5 74.0,62.0"
+      fill="none" stroke="${c}" stroke-width="1.90" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Right elbow -->
+    <circle cx="74.0" cy="62.0" r="1.6" fill="none" stroke="${c}" stroke-width="1.20" opacity="0.6"/>
+    <!-- Right arm: forearm -->
+    <path d="M74.0,62.0 C75.5,63.5 77.0,65.5 78.0,68.0"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Right hand -->
+    <path d="M78.0,68.0 C79.0,69.5 79.5,71.0 79.5,71.0"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M78.0,68.0 C79.5,68.5 80.5,69.5 80.5,69.5"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M77.5,68.5 C78.0,70.0 78.5,70.5 78.5,70.5"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Left leg: upper -->
+    <path d="M44.0,76.5 C42.0,76.5 39.5,76.5 37.0,77.0"
+      fill="none" stroke="${c}" stroke-width="1.90" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Left knee -->
+    <circle cx="37.0" cy="77.0" r="1.5" fill="none" stroke="${c}" stroke-width="1.20" opacity="0.6"/>
+    <!-- Left leg: lower -->
+    <path d="M37.0,77.0 C36.0,79.5 35.5,81.5 35.0,84.0"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Left foot -->
+    <path d="M35.0,84.0 C32.5,84.5 30.5,84.5 29.5,84.0"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M34.0,84.0 C33.5,85.5 33.5,85.5"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Right leg: upper -->
+    <path d="M56.0,76.5 C58.0,76.5 60.5,76.5 63.0,77.0"
+      fill="none" stroke="${c}" stroke-width="1.90" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Right knee -->
+    <circle cx="63.0" cy="77.0" r="1.5" fill="none" stroke="${c}" stroke-width="1.20" opacity="0.6"/>
+    <!-- Right leg: lower -->
+    <path d="M63.0,77.0 C64.0,79.5 64.5,81.5 65.0,84.0"
+      fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>
+    <!-- Right foot -->
+    <path d="M65.0,84.0 C67.5,84.5 69.5,84.5 70.5,84.0"
+      fill="none" stroke="${c}" stroke-width="1.70" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M66.0,84.0 C66.5,85.5 66.5,85.5"
+      fill="none" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round"/>`;
+
   // ── Crab extension (Rust) ──────────────────────────────────────────────────
   const crabLegs = `
     <path d="M43.86,62.52 C42.72,62.94 41.45,63.57 39.21,65.77 C38.58,66.84 37.35,69.03 37.30,73.92"
@@ -164,10 +313,19 @@ function buildBaseCreatureSVG(evoIdx, c, bc, mood, features, extTraits, dominant
     <path d="M66.00,60.28 C67.36,59.30 67.92,59.10 69.47,58.85"
       fill="none" stroke="${c}" stroke-width="1.80" stroke-linecap="round" stroke-linejoin="round"/>`;
 
-  // ── Pick body extension based on dominant language ─────────────────────────
-  const bodyExt = dominantLang === 'rust'
-    ? `${crabLegs}${crabClaws}`
-    : `${arms}${legs}`;
+  // ── Pick body extension based on evo stage / dominant language ───────────
+  const bodyExt = evoIdx === 0
+    ? eggBody
+    : evoIdx === 1
+      ? glitchBody
+      : evoIdx >= 3 && dominantLang !== 'rust'
+        ? archetypeBody
+        : dominantLang === 'rust'
+          ? `${crabLegs}${crabClaws}`
+          : `${arms}${legs}`;
+
+  // ── Body stub only rendered for evoIdx 2 (archetype has own chest) ─────────
+  const activeBodyStub = evoIdx >= 2 && evoIdx < 3 ? bodyStub : '';
 
   // ── Eating food label ──────────────────────────────────────────────────────
   const eatingSvg = eating && foodStr
@@ -195,7 +353,7 @@ function buildBaseCreatureSVG(evoIdx, c, bc, mood, features, extTraits, dominant
     `<g filter="url(#glow)">` +
     `${evoShimmer}${evoRing}` +
     `${bodyExt}` +
-    `${bodyStub}` +
+    `${activeBodyStub}` +
     `${head}` +
     `${featureOverlays(features)}` +
     `${antennae}` +

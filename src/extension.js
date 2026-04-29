@@ -6,7 +6,10 @@ try {
 } catch (err) {
   console.error('[codemon] failed to load creatures/index, using fallback renderer:', err);
 }
-const { DEBUG_PUZZLES, LORE_ENTRIES, ACHIEVEMENTS, PATTERN_COMMENTS, COMMIT_COMMENTS, PROCESS_COMMENTS, CPU_COMMENTS } = require('./data');
+const { LORE_ENTRIES, ACHIEVEMENTS, PATTERN_COMMENTS, COMMIT_COMMENTS, PROCESS_COMMENTS, CPU_COMMENTS } = require('./data');
+const { loadState, saveState, canShowPatternComment, PATTERN_COMMENT_TTL_MS } = require('./state');
+const { createHandlers } = require('./handlers');
+const { featureOverlays } = require('./features');
 
 // ── LANG / HYBRID / EXT DEFINITIONS ──────────────────────────────────────────
 
@@ -98,94 +101,6 @@ function blendColors(hexes) {
 }
 
 function pickRandom(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
-
-const PATTERN_COMMENT_TTL_MS = 10000;
-const PATTERN_COMMENT_DISMISS_COOLDOWN_MS = 30000;
-
-function canShowPatternComment(state) {
-  return !state.patternCommentDismissedUntil || Date.now() >= state.patternCommentDismissedUntil;
-}
-
-function getPuzzleForState(state) {
-  const lang = state.puzzleLang || state.dominantLang;
-  const pool = DEBUG_PUZZLES[lang] || DEBUG_PUZZLES.default;
-  // Avoid repeating last puzzle (compare by hint as stable key)
-  const available = pool.filter(p => p.hint !== state._lastPuzzleHint);
-  const chosen = available.length ? pickRandom(available) : pickRandom(pool);
-  state._lastPuzzleHint = chosen.hint;
-  return chosen;
-}
-
-// ── STATE ─────────────────────────────────────────────────────────────────────
-
-function loadState(context) {
-  const saved = context.globalState.get('codemonState_v4')
-    || (() => { const v3 = context.globalState.get('codemonState_v3'); return v3 ? { ...v3, _migratedFromV3: true } : null; })();
-  if (saved) {
-    saved.xp                    = Number.isFinite(saved.xp) ? saved.xp : 0;
-    saved.hunger                = Number.isFinite(saved.hunger) ? saved.hunger : 100;
-    saved.mood                  = Number.isFinite(saved.mood) ? saved.mood : 80;
-    saved.langCounts            = (saved.langCounts && typeof saved.langCounts === 'object') ? saved.langCounts : {};
-    saved.unlockedFeatures      = Array.isArray(saved.unlockedFeatures) ? saved.unlockedFeatures : [];
-    saved.activeHybrids         = Array.isArray(saved.activeHybrids) ? saved.activeHybrids : [];
-    saved.installedExtTraits    = Array.isArray(saved.installedExtTraits) ? saved.installedExtTraits : [];
-    saved.dominantLang          = saved.dominantLang || null;
-    saved.dominantColor         = saved.dominantColor || '#888888';
-    saved.blendColor            = saved.blendColor || saved.dominantColor || '#888888';
-    saved.lastActive            = Number.isFinite(saved.lastActive) ? saved.lastActive : Date.now();
-    saved.name                  = (typeof saved.name === 'string' && saved.name.trim()) ? saved.name : 'Unnamed';
-    saved.lastMorningFeedDate   = saved.lastMorningFeedDate   || null;
-    saved.lastAfternoonFeedDate = saved.lastAfternoonFeedDate || null;
-    saved.bugsFound             = saved.bugsFound             || 0;
-    saved.bugsAttempted         = saved.bugsAttempted         || 0;
-    saved.achievements          = saved.achievements          || [];
-    saved.unlockedLore          = saved.unlockedLore          || [];
-    saved.unlockedGhost         = saved.unlockedGhost         || false;
-    saved.patternComment        = saved.patternComment        || null;
-    saved.patternCommentExpiresAt = Number.isFinite(saved.patternCommentExpiresAt) ? saved.patternCommentExpiresAt : null;
-    saved.patternCommentDismissedUntil = Number.isFinite(saved.patternCommentDismissedUntil) ? saved.patternCommentDismissedUntil : null;
-    saved.codedPastMidnight     = saved.codedPastMidnight     || false;
-    saved.codedOnWeekend        = saved.codedOnWeekend        || false;
-    saved.longestSessionMinutes = saved.longestSessionMinutes || 0;
-    saved.sessionStartTime      = saved.sessionStartTime      || null;
-    saved.feedStreak            = saved.feedStreak            || 0;
-    saved.lastFeedDate          = saved.lastFeedDate          || null;
-    saved.activePuzzle          = saved.activePuzzle          || null;
-    saved.puzzleState           = saved.puzzleState           || 'idle'; // idle | active | solved | failed
-    saved.puzzleLang            = saved.puzzleLang            || null;  // null = auto (dominant lang)
-    saved.totalCommits          = saved.totalCommits          || 0;
-    saved.lastProcessComment    = saved.lastProcessComment    || null;
-    saved.cpuTemp               = saved.cpuTemp               != null ? saved.cpuTemp : null;
-    saved.cpuTempAvailable      = saved.cpuTempAvailable      || false;
-    saved.generation            = saved.generation            || 0;
-    saved.generations           = saved.generations           || [];
-    saved.inheritedFrom         = saved.inheritedFrom         || null;
-    saved.inheritedFeature      = saved.inheritedFeature      || null;
-    saved.starvedSince          = saved.starvedSince           != null ? saved.starvedSince : null;
-    saved.isEatingRam           = saved.isEatingRam            || false;
-    saved.feralSince            = saved.feralSince              != null ? saved.feralSince : null;
-    saved._playful              = false;
-    return saved;
-  }
-  return {
-    xp:0, hunger:100, mood:80,
-    langCounts:{}, unlockedFeatures:[], activeHybrids:[],
-    installedExtTraits:[], dominantLang:null, dominantColor:'#888888', blendColor:'#888888',
-    lastActive:Date.now(), name:'Unnamed',
-    lastMorningFeedDate:null, lastAfternoonFeedDate:null,
-    bugsFound:0, bugsAttempted:0,
-    achievements:[], unlockedLore:[], unlockedGhost:false, patternComment:null,
-    patternCommentExpiresAt:null, patternCommentDismissedUntil:null,
-    codedPastMidnight:false, codedOnWeekend:false,
-    longestSessionMinutes:0, sessionStartTime:null,
-    feedStreak:0, lastFeedDate:null,
-    activePuzzle:null, puzzleState:'idle', puzzleLang:null,
-    _lastPuzzleHint: null,
-    totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
-    generation:0, generations:[], inheritedFrom:null, inheritedFeature:null,
-    starvedSince:null, isEatingRam:false, feralSince:null, _playful:false,
-  };
-}
 
 // ── ANALYSIS ──────────────────────────────────────────────────────────────────
 
@@ -314,221 +229,80 @@ let statusBarItem = null;
 let statusBarFlickerInterval = null;
 let chaseRunning = false;
 
-function activate(context) {
-  creatureState = loadState(context);
-
-  // ── STATUS BAR (hunger strike) ─────────────────────────────────────────────
+function setupStatusBar(context) {
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, -999);
   context.subscriptions.push(statusBarItem);
+}
 
-  function startEatingRam() {
-    if (creatureState.isEatingRam) return;
-    creatureState.isEatingRam = true;
-    creatureState.feralSince = Date.now();
-    const feralLines = [
-      `ur cpu looks delicious. *crunch*`,
-      `found ur heap. eating it now. don't mind me`,
-      `no food = ram food. simple math`,
-      `*allocating feelings* (feelings = ur memory)`,
-      `${creatureState.name} has entered feral mode`,
-      `nom nom nom ur buffers`,
-      `i found the heap. it's mine now`,
-      `u had 50mb u weren't using anyway. right?`,
-    ];
-    let feralIdx = 0;
-    statusBarItem.text = '🔴 CODEMON: HUNGER STRIKE';
-    statusBarItem.show();
-    statusBarFlickerInterval = setInterval(() => {
-      statusBarItem.text = statusBarItem.text.startsWith('🔴')
-        ? '⚠️  feed me or else'
-        : '🔴 CODEMON: HUNGER STRIKE';
-    }, 800);
-    ramGremlinInterval = setInterval(() => {
-      if (ramGremlins.length < 10) {
-        ramGremlins.push(Buffer.alloc(5 * 1024 * 1024));
-        creatureState.patternComment = feralLines[feralIdx % feralLines.length];
-        feralIdx++;
-      } else {
-        creatureState.patternComment = `at capacity (50mb) but still hungry. feed. me. NOW.`;
-      }
-      saveAndRefresh(context);
-    }, 30 * 1000);
-  }
+function startEatingRam(context) {
+  if (creatureState.isEatingRam) return;
+  creatureState.isEatingRam = true;
+  creatureState.feralSince = Date.now();
+  const feralLines = [
+    `ur cpu looks delicious. *crunch*`,
+    `found ur heap. eating it now. don't mind me`,
+    `no food = ram food. simple math`,
+    `*allocating feelings* (feelings = ur memory)`,
+    `${creatureState.name} has entered feral mode`,
+    `nom nom nom ur buffers`,
+    `i found the heap. it's mine now`,
+    `u had 50mb u weren't using anyway. right?`,
+  ];
+  let feralIdx = 0;
+  statusBarItem.text = '🔴 CODEMON: HUNGER STRIKE';
+  statusBarItem.show();
+  statusBarFlickerInterval = setInterval(() => {
+    statusBarItem.text = statusBarItem.text.startsWith('🔴')
+      ? '⚠️  feed me or else'
+      : '🔴 CODEMON: HUNGER STRIKE';
+  }, 800);
+  ramGremlinInterval = setInterval(() => {
+    if (ramGremlins.length < 10) {
+      ramGremlins.push(Buffer.alloc(5 * 1024 * 1024));
+      creatureState.patternComment = feralLines[feralIdx % feralLines.length];
+      feralIdx++;
+    } else {
+      creatureState.patternComment = `at capacity (50mb) but still hungry. feed. me. NOW.`;
+    }
+    saveAndRefresh(context);
+  }, 30 * 1000);
+}
 
-  function stopEatingRam() {
-    if (!creatureState.isEatingRam) return;
-    creatureState.isEatingRam = false;
-    creatureState.starvedSince = null;
-    creatureState.feralSince = null;
-    if (ramGremlinInterval) { clearInterval(ramGremlinInterval); ramGremlinInterval = null; }
-    if (statusBarFlickerInterval) { clearInterval(statusBarFlickerInterval); statusBarFlickerInterval = null; }
-    ramGremlins = [];
-    statusBarItem.hide();
-    creatureState.patternComment = pickRandom([
-      `oh. FOOD. u do care. *sniffle* ur ram has been released. probably.`,
-      `ok ok ok i forgive u. also i definitely ate some memory. it's back now`,
-      `u came back!! the ram gremlins have been called off`,
-      `*releases 50mb of spite* we r ok now`,
-      `oh thank goodness. ur ram has been fully returned`,
-    ]);
-  }
+function stopEatingRam() {
+  if (!creatureState.isEatingRam) return;
+  creatureState.isEatingRam = false;
+  creatureState.starvedSince = null;
+  creatureState.feralSince = null;
+  if (ramGremlinInterval) { clearInterval(ramGremlinInterval); ramGremlinInterval = null; }
+  if (statusBarFlickerInterval) { clearInterval(statusBarFlickerInterval); statusBarFlickerInterval = null; }
+  ramGremlins = [];
+  statusBarItem.hide();
+  creatureState.patternComment = pickRandom([
+    `oh. FOOD. u do care. *sniffle* ur ram has been released. probably.`,
+    `ok ok ok i forgive u. also i definitely ate some memory. it's back now`,
+    `u came back!! the ram gremlins have been called off`,
+    `*releases 50mb of spite* we r ok now`,
+    `oh thank goodness. ur ram has been fully returned`,
+  ]);
+}
 
+function setupWebviewProvider(context) {
   const provider = {
     resolveWebviewView(webviewView) {
       panel_ref = webviewView;
       webviewView.webview.options = {enableScripts:true};
       refreshWebview(webviewView.webview, creatureState);
 
-      webviewView.webview.onDidReceiveMessage(msg => {
-        switch (msg.type) {
-          case 'feed': {
-            const today = new Date().toDateString();
-            const isSleeping = (Date.now()-creatureState.lastActive)/60000 > 60;
-            if (creatureState.lastFeedDate !== today) {
-              const yesterday = new Date(Date.now()-86400000).toDateString();
-              creatureState.feedStreak = creatureState.lastFeedDate === yesterday ? (creatureState.feedStreak||0)+1 : 1;
-              creatureState.lastFeedDate = today;
-            }
-            if (creatureState.isEatingRam) stopEatingRam();
-            else if (creatureState.starvedSince) creatureState.starvedSince = null;
-            if (creatureState.unlockedGhost) {
-              creatureState.unlockedGhost = false;
-              creatureState.feralSince = null;
-              creatureState.patternComment = pickRandom([
-                `wow i have to b so melodramatic to get some food around here`,
-                `three days. THREE DAYS. and all it took was u clicking a button`,
-                `back from the dead specifically to complain about ur feeding schedule`,
-                `u let me go full ghost. over. kibble. i have noted this.`,
-                `ethereal form: relinquished. resentment: retained.`,
-              ]);
-            }
-            creatureState.hunger = Math.min(100, creatureState.hunger+20);
-            const hitFull = creatureState.hunger >= 100;
-            if (!isSleeping) {
-              creatureState.mood = Math.min(100, creatureState.mood+5);
-              creatureState.xp += 5;
-            }
-            creatureState._eating = true;
-            if (hitFull) creatureState._burping = true;
-            else if (!isSleeping) creatureState._nomnom = true;
-            setTimeout(() => { creatureState._eating = false; saveAndRefresh(context); }, 1200);
-            if (hitFull) setTimeout(() => { creatureState._burping = false; saveAndRefresh(context); }, 3200);
-            else if (!isSleeping) setTimeout(() => { creatureState._nomnom = false; saveAndRefresh(context); }, 2000);
-            break;
-          }
-          case 'play':
-            creatureState.mood   = Math.min(100, creatureState.mood+15);
-            creatureState.hunger = Math.max(0,   creatureState.hunger-5);
-            creatureState.xp    += 3;
-            break;
-          case 'chase_start':
-            chaseRunning = true;
-            break;
-          case 'chase_abort':
-            chaseRunning = false;
-            saveAndRefresh(context, true);
-            break;
-          case 'game_catch': {
-            const win = msg.value && msg.value.result === 'win';
-            creatureState._playful = true;
-            creatureState.mood   = Math.min(100, creatureState.mood + (win ? 20 : 8));
-            creatureState.hunger = Math.max(0,   creatureState.hunger - 8);
-            creatureState.xp    += win ? 12 : 3;
-            context.globalState.update('codemonState_v4', creatureState);
-            setTimeout(() => { chaseRunning = false; saveAndRefresh(context, true); }, win ? 3200 : 2700);
-            setTimeout(() => { creatureState._playful = false; saveAndRefresh(context); }, 11000);
-            break;
-          }
-          case 'rename':
-            creatureState.name = (msg.value||'').slice(0,20) || creatureState.name;
-            break;
-          case 'start_puzzle': {
-            const puzzle = getPuzzleForState(creatureState);
-            creatureState.activePuzzle = puzzle;
-            creatureState.puzzleState  = 'active';
-            creatureState.bugsAttempted++;
-            break;
-          }
-          case 'guess_bug': {
-            const p = creatureState.activePuzzle;
-            if (!p) break;
-            if (msg.value === p.bugLine) {
-              creatureState.puzzleState = 'solved';
-              creatureState.bugsFound++;
-              creatureState.xp   += p.xp;
-              creatureState.mood  = Math.min(100, creatureState.mood + 20);
-              // Unlock lore from puzzle
-              if (p.loreKey) unlockLore(creatureState, p.loreKey);
-              // Store lore fragment in puzzle for display
-              if (p.lore && !creatureState.unlockedLore.includes('puzzle_'+creatureState.bugsFound)) {
-                creatureState.unlockedLore.push('puzzle_'+creatureState.bugsFound);
-              }
-            } else {
-              creatureState.puzzleState = 'failed';
-              creatureState.mood = Math.max(0, creatureState.mood - 10);
-            }
-            break;
-          }
-          case 'dismiss_puzzle':
-            creatureState.activePuzzle = null;
-            creatureState.puzzleState  = 'idle';
-            break;
-          case 'set_puzzle_lang':
-            creatureState.puzzleLang = msg.value || null;
-            break;
-          case 'dismiss_comment':
-            creatureState.patternComment = null;
-            creatureState.patternCommentExpiresAt = null;
-            creatureState.patternCommentDismissedUntil = Date.now() + PATTERN_COMMENT_DISMISS_COOLDOWN_MS;
-            break;
-          case 'prestige': {
-            // Stop feral mode before reset so intervals are cleared cleanly
-            if (creatureState.isEatingRam) stopEatingRam();
-            // Snapshot ancestor (lean — no installedExtTraits/cpuTemp bulk)
-            const ancestor = {
-              name:          creatureState.name,
-              generation:    creatureState.generation,
-              dominantLang:  creatureState.dominantLang,
-              dominantColor: creatureState.dominantColor,
-              xp:            creatureState.xp,
-              bugsFound:     creatureState.bugsFound,
-              totalCommits:  creatureState.totalCommits || 0,
-              retiredAt:     Date.now(),
-              features:      creatureState.unlockedFeatures.map(f=>({featureId:f.featureId,label:f.label,color:f.color})),
-            };
-            // Carry forward one DNA trait (most dominant lang's first unlocked feature)
-            const inheritedFeature = creatureState.unlockedFeatures[0] || null;
-            const nextName = pickRandom(PRESTIGE_NAMES);
-            const prevGens = [...creatureState.generations, ancestor];
-            const prevGen  = creatureState.generation + 1;
-            const prevLore = [...creatureState.unlockedLore];
-            // Reset all mutable fields, preserve name + lineage
-            creatureState = {
-              xp:0, hunger:100, mood:80,
-              langCounts:{}, unlockedFeatures: inheritedFeature ? [inheritedFeature] : [], activeHybrids:[],
-              installedExtTraits:creatureState.installedExtTraits, dominantLang:null,
-              dominantColor: inheritedFeature ? inheritedFeature.color : '#888888',
-              blendColor: inheritedFeature ? inheritedFeature.color : '#888888',
-              lastActive:Date.now(), name: nextName,
-              lastMorningFeedDate:null, lastAfternoonFeedDate:null,
-              bugsFound:0, bugsAttempted:0,
-              achievements:[], unlockedLore: prevLore, unlockedGhost: creatureState.unlockedGhost || false,
-              patternCommentExpiresAt:null, patternCommentDismissedUntil:null,
-              patternComment: `I remember ${ancestor.name}. Something of them remains.`,
-              codedPastMidnight:false, codedOnWeekend:false,
-              longestSessionMinutes:0, sessionStartTime:null,
-              feedStreak:0, lastFeedDate:null,
-              activePuzzle:null, puzzleState:'idle', puzzleLang:null, _lastPuzzleHint:null,
-              totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
-              generation: prevGen, generations: prevGens,
-              inheritedFrom: ancestor.name,
-              inheritedFeature: inheritedFeature,
-              isEatingRam: false, starvedSince: null, _playful:false,
-            };
-            break;
-          }
-        }
+      const handlers = createHandlers(creatureState, {
+        refresh:         (force) => saveAndRefresh(context, force),
+        stopEatingRam,
+        setChaseRunning: (v) => { chaseRunning = v; },
+        unlockLore,
+        PRESTIGE_NAMES,
+      });
 
+      webviewView.webview.onDidReceiveMessage(msg => {
+        if (handlers[msg.type]) handlers[msg.type](msg);
         const newAch = checkAchievements(creatureState);
         newAch.forEach(a => vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));
         saveAndRefresh(context);
@@ -539,7 +313,9 @@ function activate(context) {
   context.subscriptions.push(vscode.window.registerWebviewViewProvider('codemon.panel', provider));
   context.subscriptions.push(vscode.commands.registerCommand('codemon.open', () =>
     vscode.commands.executeCommand('workbench.view.extension.codemon-sidebar')));
+}
 
+function setupActivityTracker(context) {
   let prevLang = null;
   context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(event => {
     const lang = event.document.languageId;
@@ -599,8 +375,9 @@ function activate(context) {
   }));
 
   analyzeEnvironment(creatureState).then(xp => { creatureState.xp += xp; saveAndRefresh(context); });
+}
 
-  // Decay + feeding reminders
+function setupDecayLoop(context) {
   const decay = setInterval(() => {
     const now   = new Date();
     const today = now.toDateString();
@@ -626,7 +403,7 @@ function activate(context) {
       if (!creatureState.starvedSince) creatureState.starvedSince = Date.now();
       const starvedMs = Date.now() - creatureState.starvedSince;
       if (starvedMs >= 60 * 60 * 1000 && !creatureState.isEatingRam) {
-        startEatingRam();
+        startEatingRam(context);
       }
       // Ghost unlock: 72h feral
       if (!creatureState.unlockedGhost && creatureState.isEatingRam && creatureState.feralSince) {
@@ -656,7 +433,7 @@ function activate(context) {
           `*eyes glow red slightly* hungry. SO hungry.`,
           `getting difficult to maintain composure. feed me soon`,
           `ur code looks edible rn. concerned.`,
-          `starvation protocol initiated. pls respond`,
+          `starvation protocol initiated. assuming ghost form in 3... 2...`,
         ]);
       } else if (creatureState.hunger <= 50 && !creatureState.patternComment) {
         creatureState.patternComment = pickRandom([
@@ -671,8 +448,9 @@ function activate(context) {
     saveAndRefresh(context);
   }, 5*60*1000);
   context.subscriptions.push({dispose:()=>clearInterval(decay)});
+}
 
-  // ── GIT COMMIT WATCHER ──────────────────────────────────────────────────
+function setupGitWatcher(context) {
   let lastCommitMs = 0;
   function onCommit() {
     const now = Date.now();
@@ -686,32 +464,33 @@ function activate(context) {
       vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));
     saveAndRefresh(context);
   }
+
   // FileSystemWatcher: fires on .git/COMMIT_EDITMSG write (reliable cross-platform)
   const commitWatcher = vscode.workspace.createFileSystemWatcher('**/.git/COMMIT_EDITMSG');
   context.subscriptions.push(commitWatcher.onDidChange(onCommit));
   context.subscriptions.push(commitWatcher.onDidCreate(onCommit));
   context.subscriptions.push(commitWatcher);
-  // Also hook into vscode.git extension API if available (richer, same debounce covers overlap)
-  {
-    const gitExt = vscode.extensions.getExtension('vscode.git');
-    if (gitExt) {
-      Promise.resolve(gitExt.isActive ? gitExt.exports : gitExt.activate()).then(git => {
-        if (!git || !git.getAPI) return;
-        const api = git.getAPI(1);
-        if (!api) return;
-        const watched = new Set();
-        const watchRepo = repo => {
-          if (watched.has(repo) || !repo.onDidCommit) return;
-          watched.add(repo);
-          context.subscriptions.push(repo.onDidCommit(onCommit));
-        };
-        api.repositories.forEach(watchRepo);
-        context.subscriptions.push(api.onDidOpenRepository(watchRepo));
-      }).catch(() => {});
-    }
-  }
 
-  // ── PROCESS SCAN ────────────────────────────────────────────────────────
+  // Also hook into vscode.git extension API if available (richer, same debounce covers overlap)
+  const gitExt = vscode.extensions.getExtension('vscode.git');
+  if (gitExt) {
+    Promise.resolve(gitExt.isActive ? gitExt.exports : gitExt.activate()).then(git => {
+      if (!git || !git.getAPI) return;
+      const api = git.getAPI(1);
+      if (!api) return;
+      const watched = new Set();
+      const watchRepo = repo => {
+        if (watched.has(repo) || !repo.onDidCommit) return;
+        watched.add(repo);
+        context.subscriptions.push(repo.onDidCommit(onCommit));
+      };
+      api.repositories.forEach(watchRepo);
+      context.subscriptions.push(api.onDidOpenRepository(watchRepo));
+    }).catch(() => {});
+  }
+}
+
+function setupSystemPollers(context) {
   function runProcessScan() {
     const cmd = process.platform === 'win32' ? 'tasklist /FO CSV /NH' : 'ps aux';
     exec(cmd, {timeout:10000}, (err, stdout) => {
@@ -740,11 +519,7 @@ function activate(context) {
       saveAndRefresh(context);
     });
   }
-  runProcessScan();
-  const procScan = setInterval(runProcessScan, 10 * 60 * 1000);
-  context.subscriptions.push({dispose:()=>clearInterval(procScan)});
 
-  // ── CPU TEMPERATURE ──────────────────────────────────────────────────────
   function pollCpuTemp() {
     const platform = process.platform;
     let cmd;
@@ -781,9 +556,24 @@ function activate(context) {
       saveAndRefresh(context);
     });
   }
+
+  runProcessScan();
+  const procScan = setInterval(runProcessScan, 10 * 60 * 1000);
+  context.subscriptions.push({dispose:()=>clearInterval(procScan)});
+
   pollCpuTemp();
   const cpuPoll = setInterval(pollCpuTemp, 2 * 60 * 1000);
   context.subscriptions.push({dispose:()=>clearInterval(cpuPoll)});
+}
+
+function activate(context) {
+  creatureState = loadState(context);
+  setupStatusBar(context);
+  setupWebviewProvider(context);
+  setupActivityTracker(context);
+  setupDecayLoop(context);
+  setupGitWatcher(context);
+  setupSystemPollers(context);
 }
 
 function saveAndRefresh(context, force=false) {
@@ -798,60 +588,13 @@ function saveAndRefresh(context, force=false) {
   } else {
     creatureState.patternCommentExpiresAt = null;
   }
-  context.globalState.update('codemonState_v4', creatureState);
+  saveState(context, creatureState);
   if (chaseRunning && !force) return;
   if (panel_ref) {
     try { refreshWebview(panel_ref.webview, creatureState); }
     catch (e) { console.error('[codemon] refreshWebview error:', e); }
   }
 }
-
-// ── SVG FEATURE OVERLAYS ──────────────────────────────────────────────────────
-// (Same visual system as before — abbreviated here for space, full version inline)
-
-function featureOverlays(features) {
-  const ids = features.map(f=>f.featureId);
-  const out = [];
-  const scaleColor = ids.includes('hybrid_ironscale')?'#8b7f6f':ids.includes('hybrid_datascale')?'#5ba0c8':ids.includes('hybrid_scale_spark')?'#a8d8a8':ids.includes('hybrid_moonscale')?'#b8c4e8':ids.includes('hybrid_analyst')?'#4e9af1':'#4b8bbe';
-  if (ids.some(i=>['scales_full','hybrid_ironscale','hybrid_datascale','hybrid_scale_spark','hybrid_moonscale','hybrid_analyst'].includes(i)))
-    out.push(`<g opacity="0.75"><polygon points="45,40 50,36 55,40 50,44" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="37,50 42,46 47,50 42,54" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="53,50 58,46 63,50 58,54" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="41,60 46,56 51,60 46,64" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="55,60 60,56 65,60 60,64" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/><polygon points="47,70 52,66 57,70 52,74" fill="${scaleColor}55" stroke="${scaleColor}" stroke-width="0.6"/></g>`);
-  else if (ids.includes('scales_light'))
-    out.push(`<g opacity="0.4"><polygon points="45,46 50,42 55,46 50,50" fill="#4b8bbe33" stroke="#4b8bbe" stroke-width="0.5"/><polygon points="43,56 48,52 53,56 48,60" fill="#4b8bbe33" stroke="#4b8bbe" stroke-width="0.5"/><polygon points="53,56 58,52 63,56 58,60" fill="#4b8bbe33" stroke="#4b8bbe" stroke-width="0.5"/></g>`);
-  if (ids.includes('forked_tongue')||ids.includes('metatail')) out.push(`<g id="tongue-layer" style="display:none"><line x1="50" y1="57" x2="50" y2="65" stroke="#ff6eb4" stroke-width="2.2" stroke-linecap="round"/><line x1="50" y1="63" x2="44" y2="72" stroke="#ff6eb4" stroke-width="2" stroke-linecap="round"/><line x1="50" y1="63" x2="56" y2="72" stroke="#ff6eb4" stroke-width="2" stroke-linecap="round"/></g>`);
-  if (ids.includes('snake_tail')) out.push(`<path d="M50,80 Q43,87 47,93 Q53,98 57,93 Q61,87 55,84 Q50,82 50,80" fill="#4b8bbe22" stroke="#4b8bbe" stroke-width="1.2" stroke-linecap="round"/>`);
-  if (ids.includes('iron_plates')||ids.includes('exoskeleton')||ids.includes('hybrid_ironscale')||ids.includes('hybrid_flameirn')) { const ic=ids.includes('hybrid_flameirn')?'#e06030':'#ce422b'; out.push(`<g transform="rotate(-12,57,32)"><rect x="51" y="32" width="12" height="3" rx="1.5" fill="${ic}" stroke="${ic}bb" stroke-width="0.5"/><rect x="53" y="21" width="8" height="12" rx="0.5" fill="${ic}cc" stroke="${ic}" stroke-width="0.5"/><line x1="57" y1="21" x2="55" y2="15" stroke="${ic}" stroke-width="1.4" stroke-linecap="round"/><circle cx="54.5" cy="14" r="1.8" fill="${ic}"/></g><polygon points="42,62 46,57 50,62 46,67" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><polygon points="50,62 54,57 58,62 54,67" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/><polygon points="46,73 50,68 54,73 50,78" fill="${ic}25" stroke="${ic}" stroke-width="0.8"/>`); }
-  if (ids.includes('rust_flecks')) out.push(`<line x1="33" y1="57" x2="33" y2="62" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="31" y1="64" x2="31" y2="69" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="34" y1="71" x2="34" y2="76" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="67" y1="59" x2="67" y2="64" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="69" y1="66" x2="69" y2="71" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="66" y1="73" x2="66" y2="78" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>`);
-  if (ids.includes('claws')||ids.includes('exoskeleton')) out.push(`<line x1="28" y1="60" x2="20" y2="67" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="27" y1="57" x2="19" y2="59" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="72" y1="60" x2="80" y2="67" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/><line x1="73" y1="57" x2="81" y2="59" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>`);
-  if (ids.includes('lightning_fin')||ids.includes('arc_trail')||ids.includes('hybrid_voidarc')||ids.includes('hybrid_scale_spark')) { const fc=ids.includes('hybrid_voidarc')?'#9b72cf':'#f7df1e'; out.push(`<polygon points="50,16 44,28 48,26 43,40 50,34 57,40 52,26 56,28" fill="${fc}77" stroke="${fc}" stroke-width="0.8"/>`); }
-  if (ids.includes('spark_static')) out.push(`<line x1="30" y1="41" x2="25" y2="36" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/><line x1="27" y1="44" x2="22" y2="44" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/><line x1="70" y1="41" x2="75" y2="36" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/><line x1="73" y1="44" x2="78" y2="44" stroke="#f7df1e" stroke-width="0.8" opacity="0.55"/>`);
-  if (ids.includes('yellow_corona')) out.push(`<ellipse cx="50" cy="38" rx="18" ry="14" fill="none" stroke="#f7df1e" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.45"/>`);
-  if (ids.includes('monad_rings')||ids.includes('category_wings')) out.push(`<ellipse cx="50" cy="50" rx="29" ry="9" fill="none" stroke="#5e5086" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.55" transform="rotate(-20,50,50)"/><ellipse cx="50" cy="50" rx="35" ry="11" fill="none" stroke="#c792ea" stroke-width="0.6" stroke-dasharray="2,3" opacity="0.35" transform="rotate(20,50,50)"/>`);
-  if (ids.includes('lambda_mark')) out.push(`<text x="46" y="36" font-size="10" fill="#c792ea" font-family="monospace" opacity="0.9">λ</text>`);
-  if (ids.includes('category_wings')||ids.includes('interface_wings')) { const wc=ids.includes('category_wings')?'#5e5086':'#3178c6'; out.push(`<path d="M28,50 Q14,40 16,26 Q20,14 30,24" fill="${wc}22" stroke="${wc}" stroke-width="0.8"/><path d="M72,50 Q86,40 84,26 Q80,14 70,24" fill="${wc}22" stroke="${wc}" stroke-width="0.8"/>`); }
-  if (ids.includes('halo')) out.push(`<ellipse cx="50" cy="18" rx="17" ry="4" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.8"/>`);
-  if (ids.includes('blue_lattice')) out.push(`<g opacity="0.2" stroke="#3178c6" stroke-width="0.5"><line x1="36" y1="45" x2="64" y2="45"/><line x1="34" y1="55" x2="66" y2="55"/><line x1="35" y1="65" x2="65" y2="65"/><line x1="44" y1="37" x2="41" y2="73"/><line x1="50" y1="34" x2="50" y2="75"/><line x1="56" y1="37" x2="59" y2="73"/></g>`);
-  if (ids.includes('rigid_spine')) out.push(`<line x1="50" y1="30" x2="50" y2="78" stroke="#3178c6" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/><line x1="46" y1="40" x2="54" y2="40" stroke="#3178c6" stroke-width="0.7" opacity="0.4"/><line x1="45" y1="52" x2="55" y2="52" stroke="#3178c6" stroke-width="0.7" opacity="0.4"/>`);
-  if (ids.includes('chart_eyes')) out.push(`<circle cx="37" cy="44" r="5" fill="#276dc322" stroke="#276dc3" stroke-width="0.8"/><path d="M37,44 L37,40 A4,4 0 0,1 40.5,46.5 Z" fill="#276dc3" opacity="0.8"/><circle cx="63" cy="44" r="5" fill="#276dc322" stroke="#276dc3" stroke-width="0.8"/><path d="M63,44 L63,40 A4,4 0 0,1 66.5,46.5 Z" fill="#276dc3" opacity="0.8"/>`);
-  if (ids.includes('data_tendrils')||ids.includes('hybrid_analyst')||ids.includes('hybrid_datascale')) out.push(`<path d="M28,55 Q18,50 14,58 Q12,65 18,67" fill="none" stroke="#276dc3" stroke-width="0.8" stroke-dasharray="2,1.5" opacity="0.7"/><path d="M72,55 Q82,50 86,58 Q88,65 82,67" fill="none" stroke="#276dc3" stroke-width="0.8" stroke-dasharray="2,1.5" opacity="0.7"/><path d="M50,80 Q45,91 41,93" fill="none" stroke="#276dc3" stroke-width="0.8" stroke-dasharray="2,1.5" opacity="0.6"/><path d="M50,80 Q55,91 59,93" fill="none" stroke="#276dc3" stroke-width="0.8" stroke-dasharray="2,1.5" opacity="0.6"/>`);
-  if (ids.includes('histogram_ridge')) out.push(`<rect x="41" y="26" width="4" height="7" fill="#276dc344" stroke="#276dc3" stroke-width="0.5"/><rect x="46" y="21" width="4" height="12" fill="#276dc344" stroke="#276dc3" stroke-width="0.5"/><rect x="51" y="23" width="4" height="10" fill="#276dc344" stroke="#276dc3" stroke-width="0.5"/><rect x="56" y="28" width="4" height="5" fill="#276dc344" stroke="#276dc3" stroke-width="0.5"/>`);
-  if (ids.includes('data_spots')) out.push(`<circle cx="41" cy="48" r="2" fill="#276dc3" opacity="0.3"/><circle cx="59" cy="46" r="1.5" fill="#276dc3" opacity="0.25"/><circle cx="54" cy="59" r="2.5" fill="#276dc3" opacity="0.3"/><circle cx="39" cy="63" r="1.5" fill="#276dc3" opacity="0.25"/><circle cx="61" cy="61" r="2" fill="#276dc3" opacity="0.3"/>`);
-  if (ids.includes('channel_gills')) out.push(`<line x1="28" y1="47" x2="21" y2="51" stroke="#00add8" stroke-width="1.3"/><line x1="28" y1="53" x2="21" y2="57" stroke="#00add8" stroke-width="1.3"/><line x1="28" y1="59" x2="21" y2="63" stroke="#00add8" stroke-width="1.3"/><line x1="72" y1="47" x2="79" y2="51" stroke="#00add8" stroke-width="1.3"/><line x1="72" y1="53" x2="79" y2="57" stroke="#00add8" stroke-width="1.3"/><line x1="72" y1="59" x2="79" y2="63" stroke="#00add8" stroke-width="1.3"/>`);
-  if (ids.includes('stream_lines')) out.push(`<path d="M30,38 Q50,33 70,38" fill="none" stroke="#00add8" stroke-width="0.7" opacity="0.45"/><path d="M28,50 Q50,44 72,50" fill="none" stroke="#00add8" stroke-width="0.7" opacity="0.35"/><path d="M30,62 Q50,57 70,62" fill="none" stroke="#00add8" stroke-width="0.7" opacity="0.25"/>`);
-  if (ids.includes('phased_limbs')) out.push(`<line x1="29" y1="52" x2="18" y2="60" stroke="#00add8" stroke-width="1" stroke-linecap="round" opacity="0.25" stroke-dasharray="2,2"/><line x1="71" y1="52" x2="82" y2="60" stroke="#00add8" stroke-width="1" stroke-linecap="round" opacity="0.25" stroke-dasharray="2,2"/>`);
-  if (ids.includes('gopher_ears')) out.push(`<ellipse cx="38" cy="29" rx="6" ry="7" fill="#00add822" stroke="#00add8" stroke-width="0.9"/><ellipse cx="62" cy="29" rx="6" ry="7" fill="#00add822" stroke="#00add8" stroke-width="0.9"/>`);
-  if (ids.includes('flame_mane')||ids.includes('hybrid_flameirn')) { const fc=ids.includes('hybrid_flameirn')?'#e06030':'#f34b7d'; out.push(`<path d="M38,28 Q35,18 40,13 Q38,23 44,20 Q41,28 46,26 Q44,33 50,30 Q56,33 54,26 Q59,28 56,20 Q62,23 60,13 Q65,18 62,28" fill="${fc}66" stroke="${fc}" stroke-width="0.5"/>`); }
-  if (ids.includes('pointer_horns')) out.push(`<line x1="40" y1="28" x2="36" y2="16" stroke="#f34b7d" stroke-width="1.5" stroke-linecap="round"/><line x1="60" y1="28" x2="64" y2="16" stroke="#f34b7d" stroke-width="1.5" stroke-linecap="round"/>`);
-  if (ids.includes('heat_shimmer')) out.push(`<path d="M34,42 Q37,38 40,42 Q43,46 46,42" fill="none" stroke="#f34b7d" stroke-width="0.7" opacity="0.4"/><path d="M54,42 Q57,38 60,42 Q63,46 66,42" fill="none" stroke="#f34b7d" stroke-width="0.7" opacity="0.4"/>`);
-  if (ids.includes('lunar_glow')||ids.includes('hybrid_moonscale')) out.push(`<circle cx="50" cy="50" r="27" fill="none" stroke="#7b86b8" stroke-width="0.5" stroke-dasharray="4,5" opacity="0.35"/>`);
-  if (ids.includes('table_shell')) out.push(`<g opacity="0.35" stroke="#7b86b8" stroke-width="0.6" fill="#7b86b811"><rect x="35" y="44" width="12" height="10" rx="1"/><rect x="53" y="44" width="12" height="10" rx="1"/><rect x="38" y="56" width="24" height="10" rx="1"/><rect x="41" y="68" width="18" height="8" rx="1"/></g>`);
-  if (ids.includes('coroutine_fins')) out.push(`<path d="M28,44 Q16,41 18,52 Q16,63 28,59" fill="#7b86b822" stroke="#7b86b8" stroke-width="0.9"/><path d="M72,44 Q84,41 82,52 Q84,63 72,59" fill="#7b86b822" stroke="#7b86b8" stroke-width="0.9"/>`);
-  if (ids.includes('ruby_spine')||ids.includes('gem_flecks')) out.push(`<circle cx="50" cy="33" r="2.5" fill="#cc342d88" stroke="#cc342d" stroke-width="0.7"/><circle cx="50" cy="43" r="2" fill="#cc342d88" stroke="#cc342d" stroke-width="0.7"/><circle cx="50" cy="53" r="2" fill="#cc342d88" stroke="#cc342d" stroke-width="0.7"/><circle cx="50" cy="63" r="2.5" fill="#cc342d88" stroke="#cc342d" stroke-width="0.7"/>`);
-  if (ids.includes('facet_eyes')) out.push(`<polygon points="37,40 41,44 37,48 33,44" fill="#cc342d22" stroke="#cc342d" stroke-width="0.8"/><polygon points="63,40 67,44 63,48 59,44" fill="#cc342d22" stroke="#cc342d" stroke-width="0.8"/>`);
-  if (ids.includes('crystal_wings')) out.push(`<polygon points="28,50 16,42 20,54 14,60 26,58" fill="#cc342d15" stroke="#cc342d" stroke-width="0.8"/><polygon points="72,50 84,42 80,54 86,60 74,58" fill="#cc342d15" stroke="#cc342d" stroke-width="0.8"/>`);
-  if (ids.includes('void_shimmer')||ids.includes('hybrid_voidarc')) out.push(`<circle cx="50" cy="50" r="24" fill="none" stroke="#5e5086" stroke-width="0.6" stroke-dasharray="2,6" opacity="0.4"/>`);
-  if (ids.includes('template_tail')) out.push(`<line x1="50" y1="80" x2="50" y2="87" stroke="#f34b7d" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="87" x2="44" y2="95" stroke="#f34b7d" stroke-width="1" stroke-linecap="round"/><line x1="50" y1="87" x2="56" y2="95" stroke="#f34b7d" stroke-width="1" stroke-linecap="round"/>`);
-  return out.join('\n');
-}        
 
 function buildEggSVG(extTraits, c) {
   // Collect glyph decorations from installed extension traits
@@ -948,57 +691,185 @@ function buildHolyCCreatureSVG(evoIdx, c, bc, mood, features, foodStr='{;}') {
 
 // ── HTML ──────────────────────────────────────────────────────────────────────
 
-function refreshWebview(webview, state) {
+function computeRenderState(state) {
   const evo    = getEvolution(state.xp);
   const evoIdx = EVOLUTIONS.indexOf(evo);
-  const mood   = (() => { const idle=(Date.now()-state.lastActive)/60000; if(state.isEatingRam) return 'feral'; if(state._eating) return 'eating'; if(state._playful) return 'playful'; if(idle>60)return'sleeping'; if(idle>15)return'drowsy'; if(state.mood>70)return'happy'; if(state.mood>40)return'neutral'; return'grumpy'; })();
-  const nextEvo = EVOLUTIONS.find(e=>e.minXP>state.xp);
-  const xpPct   = nextEvo ? Math.round(((state.xp-evo.minXP)/(nextEvo.minXP-evo.minXP))*100) : 100;
-  const c  = state.dominantColor||'#888888';
-  const bc = state.blendColor||c;
-  const moodEmoji = {happy:'◉',neutral:'◎',grumpy:'◌',drowsy:'◍',sleeping:'⊙',playful:'◈',feral:'◆',eating:'●'}[mood]||'◎';
-  const topLangs = Object.entries(state.langCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const currentHybrid = state.activeHybrids.length ? HYBRIDS.find(h=>h.id===state.activeHybrids[state.activeHybrids.length-1]) : null;
-  const totalEdits = Object.values(state.langCounts).reduce((a,b)=>a+b,0);
+  const idle   = (Date.now() - state.lastActive) / 60000;
+  let mood;
+  if (state.isEatingRam)   mood = 'feral';
+  else if (state._eating)  mood = 'eating';
+  else if (state._playful) mood = 'playful';
+  else if (idle > 60)      mood = 'sleeping';
+  else if (idle > 15)      mood = 'drowsy';
+  else if (state.mood > 70) mood = 'happy';
+  else if (state.mood > 40) mood = 'neutral';
+  else                      mood = 'grumpy';
+  const nextEvo     = EVOLUTIONS.find(e => e.minXP > state.xp);
+  const xpPct       = nextEvo ? Math.round(((state.xp - evo.minXP) / (nextEvo.minXP - evo.minXP)) * 100) : 100;
+  const c           = state.dominantColor || '#888888';
+  const bc          = state.blendColor || c;
+  const moodEmoji   = { happy:'◉', neutral:'◎', grumpy:'◌', drowsy:'◍', sleeping:'⊙', playful:'◈', feral:'◆', eating:'●' }[mood] || '◎';
+  const topLangs    = Object.entries(state.langCounts).sort((a,b) => b[1]-a[1]).slice(0, 5);
+  const currentHybrid = state.activeHybrids.length
+    ? HYBRIDS.find(h => h.id === state.activeHybrids[state.activeHybrids.length - 1])
+    : null;
+  const totalEdits      = Object.values(state.langCounts).reduce((a,b) => a+b, 0);
   const hasStartedCoding = totalEdits > 0;
-  const isHolyC = state.dominantLang === 'holyc' || (state.langCounts.holyc || 0) >= 20;
+  const isHolyC         = state.dominantLang === 'holyc' || (state.langCounts.holyc || 0) >= 20;
+  return { evo, evoIdx, mood, nextEvo, xpPct, c, bc, moodEmoji, topLangs, currentHybrid, totalEdits, hasStartedCoding, isHolyC };
+}
 
-  // Next feature hint
+function refreshWebview(webview, state) {
+  const { evo, evoIdx, mood, nextEvo, xpPct, c, bc, moodEmoji, topLangs, currentHybrid, totalEdits, hasStartedCoding, isHolyC } = computeRenderState(state);
+  const hint                                        = renderHints(state, c);
+  const puzzleHtml                                  = renderPuzzle(state, c);
+  const codexHtml                                   = renderCodex(state, c);
+  const achHtml                                     = renderAchievements(state, c);
+  const loreHtml                                    = renderLore(state);
+  const { langPips, featBadges, hybridBox, cpuStr } = renderStats(state, topLangs, currentHybrid, c);
+  const lineage                                     = renderLineage(state);
+  const styles                                      = renderStyles(c, bc);
+  const scripts                                     = renderScripts(c);
+
+  webview.html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+${styles}</head><body>
+<div class="sl2"></div>
+<div class="w mood-${mood}">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="nm" onclick="tr()" title="click to rename">${esc(state.name)}</div>
+      <div class="es">${hasStartedCoding ? evo.name : 'egg'}${state.generation>0?` <span style="opacity:0.5">[gen ${state.generation+1}]</span>`:''}</div>
+      ${state.inheritedFrom?`<div style="font-size:8px;color:var(--d);margin-top:1px">descended from ${esc(state.inheritedFrom)}</div>`:''}
+    </div>
+    <div style="text-align:right"><div class="me">${moodEmoji}</div><div class="mw">${mood}</div></div>
+  </div>
+  <div class="rw" id="rw"><input id="ri" maxlength="20" value="${esc(state.name)}"/><button onclick="dr()">OK</button></div>
+
+  <!-- Creature -->
+  <div class="cf">
+    <div class="speech-bubble-wrap" style="${state.patternComment?'min-height:52px':''}">` + (state.patternComment && !state._eating && !state._nomnom && !state._burping ?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:'') + `</div>
+    ${(hasStartedCoding || state.unlockedGhost) ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureForLang(state.dominantLang,evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state),state.unlockedGhost)) : buildEggSVG(state.installedExtTraits,c)}
+    ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
+    ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
+    ${hasStartedCoding && featBadges?`<button class="dna-toggle" data-key="dna" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
+    <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
+  </div>
+
+  ${hybridBox}
+
+  <!-- Stats -->
+  <div class="sts">
+    <div class="sr"><div class="sl">hunger</div><div class="sb"><div class="sf fh${state.isEatingRam ? ' hunger-crit' : ''}" style="width:${state.hunger}%"></div></div><div class="sv">${Math.round(state.hunger)}</div></div>
+    <div class="sr"><div class="sl">mood</div><div class="sb"><div class="sf fm" style="width:${state.mood}%"></div></div><div class="sv">${Math.round(state.mood)}</div></div>
+    <div class="sr"><div class="sl">xp</div><div class="sb"><div class="sf fx" style="width:${xpPct}%"></div></div><div class="sv">${state.xp}</div></div>
+  </div>
+  ${nextEvo?`<div class="sub">${nextEvo.minXP-state.xp} xp → ${nextEvo.name}</div>`:'<div class="sub">MAX FORM</div>'}
+  ${hint}
+  <div class="stat-row-inline"><span>edits: ${totalEdits}</span><span>bugs: ${state.bugsFound}</span><span>commits: ${state.totalCommits||0}</span><span>streak: ${state.feedStreak||0}d</span>${cpuStr}</div>
+  ${state.isEatingRam ? `<div class="ram-counter">⚠ RAM consumed: ${ramGremlins.length * 5}MB / 50MB</div>` : ''}
+
+  <!-- Actions -->
+  <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Pet</button></div>
+  <button onclick="openChase()" style="width:100%;margin-top:5px;border-color:${c}44;font-size:9px">⬤ Chase Ball</button>
+  <div id="ng-confirm" style="display:none;background:var(--s);border:1px solid #f4433644;border-radius:4px;padding:8px 10px;font-size:9px;color:var(--d)">
+    Retire ${esc(state.name)} and begin a new generation.<br/>One DNA trait will carry forward. Name your successor.
+    <div style="display:flex;gap:5px;margin-top:6px">
+      <button onclick="s('prestige')" style="flex:1;border-color:#f4433688;color:#f44336">✦ Prestige</button>
+      <button onclick="document.getElementById('ng-confirm').style.display='none'" style="flex:1">Cancel</button>
+    </div>
+  </div>
+  <button onclick="document.getElementById('ng-confirm').style.display=(document.getElementById('ng-confirm').style.display==='none'?'block':'none')" style="width:100%;opacity:0.3;font-size:8px">⟳ new game+</button>
+
+  <hr/>
+
+  <!-- DNA -->
+  ${topLangs.length?`<div><div class="stl">DNA</div><div class="lr">${langPips}</div></div>`:'<div class="sub">start coding to shape your creature</div>'}
+
+  <hr/>
+
+  <!-- Debug challenge -->
+  <div class="section-header">[ debug ]</div>
+  ${puzzleHtml}
+
+  <hr/>
+
+  <!-- Codex -->
+  <button class="dna-toggle" data-key="codex" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>codex</button>
+  <div class="dna-drawer">
+  ${codexHtml}
+  </div>
+
+  <hr/>
+
+  <!-- Achievements -->
+  <button class="dna-toggle" data-key="ach" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>achievements (${state.achievements.length})</button>
+  <div class="dna-drawer">
+  <div class="ach-grid" style="width:100%">${achHtml}</div>
+  </div>
+
+  <hr/>
+
+  <!-- Lore -->
+  <button class="dna-toggle" data-key="lore" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lore (${state.unlockedLore.length})</button>
+  <div class="dna-drawer">${loreHtml}</div>
+
+  ${lineage}
+
+</div>
+
+<div id="chase-overlay">
+  <div id="chase-msg">press → to chase!</div>
+  <div id="chase-field">
+    <div id="chase-bg"></div>
+    <div id="chase-ground"></div>
+    <svg id="chase-creature" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="60" rx="18" ry="22" fill="${c}30" stroke="${c}" stroke-width="2"/><circle cx="42" cy="48" r="4" fill="${c}"/><circle cx="43.5" cy="46.5" r="1.2" fill="white"/><circle cx="58" cy="48" r="4" fill="${c}"/><circle cx="59.5" cy="46.5" r="1.2" fill="white"/><path d="M41 58 Q50 67 59 58" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
+    <div id="chase-ball"></div>
+  </div>
+  <div id="chase-result"></div>
+  <div id="chase-hint">tap → to run &nbsp;|&nbsp; esc to quit</div>
+</div>
+${scripts}</body></html>`;
+}
+
+function renderHints(state, c) {
   let hint = '';
-  for (const [lang,count] of Object.entries(state.langCounts).sort((a,b)=>b[1]-a[1])) {
-    const lt = LANG_TRAITS[lang]; if(!lt) continue;
-    for (const [thr,feat] of Object.entries(lt.features)) {
-      if (count<parseInt(thr) && !state.unlockedFeatures.some(f=>f.featureId===feat.id)) {
-        hint=`<div class="hint">▸ next: <span style="color:${lt.color}">${feat.label}</span> (${parseInt(thr)-count} more ${lang} edits)</div>`; break;
+  for (const [lang, count] of Object.entries(state.langCounts).sort((a,b) => b[1]-a[1])) {
+    const lt = LANG_TRAITS[lang]; if (!lt) continue;
+    for (const [thr, feat] of Object.entries(lt.features)) {
+      if (count < parseInt(thr) && !state.unlockedFeatures.some(f => f.featureId === feat.id)) {
+        hint = `<div class="hint">▸ next: <span style="color:${lt.color}">${feat.label}</span> (${parseInt(thr)-count} more ${lang} edits)</div>`; break;
       }
     }
     if (hint) break;
   }
-
-  // Hybrid hint
-  let hybridHint = '';
-  if (!hint) {
-    for (const h of HYBRIDS) {
-      if (state.activeHybrids.includes(h.id)) continue;
-      const progress = Object.entries(h.requires).map(([l,t])=>{const hv=state.langCounts[l]||0;return hv<t?`${t-hv} more ${l}`:null;}).filter(Boolean);
-      if (progress.length < Object.keys(h.requires).length) { hybridHint=`<div class="hint">⚡ hybrid <span style="color:${h.color}">${h.name}</span>: ${progress.join(', ')}</div>`; break; }
+  if (hint) return hint;
+  for (const h of HYBRIDS) {
+    if (state.activeHybrids.includes(h.id)) continue;
+    const progress = Object.entries(h.requires).map(([l,t]) => { const hv = state.langCounts[l]||0; return hv<t ? `${t-hv} more ${l}` : null; }).filter(Boolean);
+    if (progress.length < Object.keys(h.requires).length) {
+      return `<div class="hint">⚡ hybrid <span style="color:${h.color}">${h.name}</span>: ${progress.join(', ')}</div>`;
     }
   }
+  return '';
+}
 
-  // ── PUZZLE HTML ──
-  let puzzleHtml = '';
+function renderPuzzle(state, c) {
   const puzzleLangOptions = ['auto','python','javascript','rust','haskell','r','lua','shellscript','holyc','default'];
-  const puzzleLangShort  = {'auto':'AUTO','python':'PY','javascript':'JS','rust':'RS','haskell':'HS','r':'R','lua':'LUA','shellscript':'SH','holyc':'HC','default':'CS'};
+  const puzzleLangShort   = {auto:'AUTO',python:'PY',javascript:'JS',rust:'RS',haskell:'HS',r:'R',lua:'LUA',shellscript:'SH',holyc:'HC',default:'CS'};
   const selectedPuzzleLang = state.puzzleLang || 'auto';
   const langSelectorHtml = `<div style="margin-top:6px">
     <div style="font-size:9px;color:var(--d);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">language:</div>
     <div style="display:flex;flex-wrap:wrap;gap:3px">
-      ${puzzleLangOptions.map(k=>{const active=k===selectedPuzzleLang;return `<button onclick="s('set_puzzle_lang','${k==='auto'?'':k}')" style="padding:2px 6px;font-size:9px;${active?`background:${c};color:#fff;border-color:${c};`:'opacity:0.55;'}">${puzzleLangShort[k]||k}</button>`;}).join('')}
+      ${puzzleLangOptions.map(k => { const active = k === selectedPuzzleLang; return `<button onclick="s('set_puzzle_lang','${k==='auto'?'':k}')" style="padding:2px 6px;font-size:9px;${active?`background:${c};color:#fff;border-color:${c};`:'opacity:0.55;'}">${puzzleLangShort[k]||k}</button>`; }).join('')}
     </div>
   </div>`;
   if (state.puzzleState === 'idle') {
-    puzzleHtml = `<div class="section-box"><div class="sec-title">debug challenge</div><div class="puzzle-prompt">I have a challenge for you. Find the bug, earn XP and lore.</div>${langSelectorHtml}<button onclick="s('start_puzzle')" style="width:100%;margin-top:6px">◈ Start Challenge</button></div>`;
-  } else if (state.puzzleState === 'active' && state.activePuzzle) {
+    return `<div class="section-box"><div class="sec-title">debug challenge</div><div class="puzzle-prompt">I have a challenge for you. Find the bug, earn XP and lore.</div>${langSelectorHtml}<button onclick="s('start_puzzle')" style="width:100%;margin-top:6px">◈ Start Challenge</button></div>`;
+  }
+  if (state.puzzleState === 'active' && state.activePuzzle) {
     const p = state.activePuzzle;
     const lines = p.lines.map((line, i) =>
       `<div class="code-line" onclick="s('guess_bug',${i})" title="Click if this is the bug">
@@ -1006,28 +877,32 @@ function refreshWebview(webview, state) {
         <code>${esc(line)}</code>
       </div>`
     ).join('');
-    puzzleHtml = `<div class="section-box"><div class="sec-title">debug challenge <span style="color:${c}">${state.puzzleLang||state.dominantLang||'cs'}</span></div>
+    return `<div class="section-box"><div class="sec-title">debug challenge <span style="color:${c}">${state.puzzleLang||state.dominantLang||'cs'}</span></div>
       <div class="puzzle-hint">I sense something wrong here. Which line is broken?</div>
       <div class="code-block">${lines}</div>
       <div class="hint" style="margin-top:4px">hint: ${esc(p.hint)}</div>
       <button onclick="s('dismiss_puzzle')" style="width:100%;margin-top:6px;opacity:0.5">✕ Give Up</button>
     </div>`;
-  } else if (state.puzzleState === 'solved' && state.activePuzzle) {
+  }
+  if (state.puzzleState === 'solved' && state.activePuzzle) {
     const p = state.activePuzzle;
-    puzzleHtml = `<div class="section-box solved"><div class="sec-title" style="color:#4caf50">✓ correct — +${p.xp} xp</div>
+    return `<div class="section-box solved"><div class="sec-title" style="color:#4caf50">✓ correct — +${p.xp} xp</div>
       <div class="puzzle-explanation">${esc(p.explanation)}</div>
       <div class="lore-fragment">"${esc(p.lore)}"</div>
       <button onclick="s('dismiss_puzzle')" style="width:100%;margin-top:6px">Continue</button>
     </div>`;
-  } else if (state.puzzleState === 'failed' && state.activePuzzle) {
+  }
+  if (state.puzzleState === 'failed' && state.activePuzzle) {
     const p = state.activePuzzle;
-    puzzleHtml = `<div class="section-box failed"><div class="sec-title" style="color:#f44336">✗ not quite</div>
+    return `<div class="section-box failed"><div class="sec-title" style="color:#f44336">✗ not quite</div>
       <div class="puzzle-explanation">The bug was on line ${p.bugLine+1}. ${esc(p.explanation)}</div>
       <button onclick="s('dismiss_puzzle')" style="width:100%;margin-top:6px">Try Again Later</button>
     </div>`;
   }
+  return '';
+}
 
-  // ── CODEX HTML ──
+function renderCodex(state, c) {
   const codexEvo = EVOLUTIONS.map(e => {
     const unlocked = state.xp >= e.minXP;
     return `<div class="codex-entry ${unlocked?'unlocked':'locked'}">
@@ -1036,19 +911,25 @@ function refreshWebview(webview, state) {
       <div class="codex-sub">${unlocked?e.description+` (${e.minXP} XP)`:'reach '+e.minXP+' XP'}</div></div>
     </div>`;
   }).join('');
-
   const codexHybrids = HYBRIDS.map(h => {
     const unlocked = state.activeHybrids.includes(h.id);
-    const reqStr = Object.entries(h.requires).map(([l,t])=>`${t} ${l}`).join(' + ');
+    const reqStr = Object.entries(h.requires).map(([l,t]) => `${t} ${l}`).join(' + ');
     return `<div class="codex-entry ${unlocked?'unlocked':'locked'}">
       <span class="codex-glyph" style="${unlocked?`color:${h.color}`:'color:#333'}">⚡</span>
       <div><div class="codex-name" style="${unlocked?`color:${h.color}`:''}"> ${unlocked?h.name:'???'}</div>
       <div class="codex-sub">${unlocked?h.desc:reqStr}</div></div>
     </div>`;
   }).join('');
+  return `<div class="section-box" style="width:100%">
+    <div class="sec-title">evolution stages</div>${codexEvo}
+  </div>
+  <div class="section-box" style="margin-top:6px;width:100%">
+    <div class="sec-title">hybrid forms</div>${codexHybrids}
+  </div>`;
+}
 
-  // ── ACHIEVEMENTS HTML ──
-  const achHtml = ACHIEVEMENTS.map(a => {
+function renderAchievements(state, c) {
+  return ACHIEVEMENTS.map(a => {
     const earned = state.achievements.includes(a.id);
     return `<div class="ach-entry ${earned?'earned':''}">
       <span class="ach-glyph" style="${earned?`color:${c}`:'color:#333'}">${a.glyph}</span>
@@ -1056,32 +937,40 @@ function refreshWebview(webview, state) {
       <div class="ach-desc">${earned?a.desc:'keep coding'}</div></div>
     </div>`;
   }).join('');
+}
 
-  // ── LORE HTML ──
-  const loreHtml = state.unlockedLore.length
-    ? state.unlockedLore.filter(id=>id.startsWith('puzzle_')||LORE_ENTRIES[id]).map(id => {
-        if (id.startsWith('puzzle_')) {
-          const n = parseInt(id.replace('puzzle_',''));
-          return `<div class="lore-entry"><div class="lore-title">Field Note #${n}</div><div class="lore-text">Bug found. Something learned. The distinction between what is written and what is meant.</div></div>`;
-        }
-        const entry = LORE_ENTRIES[id];
-        if (!entry) return '';
-        return `<div class="lore-entry"><div class="lore-title">${esc(entry.title)}</div><div class="lore-text">${esc(entry.text)}</div></div>`;
-      }).filter(Boolean).join('')
-    : '<div class="hint" style="text-align:center">Unlock lore by coding and finding bugs.</div>';
+function renderLore(state) {
+  if (!state.unlockedLore.length) {
+    return '<div class="hint" style="text-align:center">Unlock lore by coding and finding bugs.</div>';
+  }
+  return state.unlockedLore
+    .filter(id => id.startsWith('puzzle_') || LORE_ENTRIES[id])
+    .map(id => {
+      if (id.startsWith('puzzle_')) {
+        const n = parseInt(id.replace('puzzle_', ''));
+        return `<div class="lore-entry"><div class="lore-title">Field Note #${n}</div><div class="lore-text">Bug found. Something learned. The distinction between what is written and what is meant.</div></div>`;
+      }
+      const entry = LORE_ENTRIES[id];
+      if (!entry) return '';
+      return `<div class="lore-entry"><div class="lore-title">${esc(entry.title)}</div><div class="lore-text">${esc(entry.text)}</div></div>`;
+    })
+    .filter(Boolean)
+    .join('');
+}
 
-  // ── STATS ──
+function renderStats(state, topLangs, currentHybrid, c) {
   const LANG_ABBR = {javascript:'JS',typescript:'TS',python:'PY',rust:'RS',go:'GO',haskell:'HS',cpp:'C++',lua:'LU',ruby:'RB',r:'R',rmd:'R',css:'CSS',scss:'CSS',html:'HTM',shellscript:'SH',bash:'SH',powershell:'PS',java:'JV',csharp:'C#',php:'PHP',swift:'SW',kotlin:'KT',dart:'DA',vue:'VUE',svelte:'SV',sql:'SQL',toml:'TOM',yaml:'YML',c:'C',zig:'ZIG',ocaml:'ML',elixir:'EX',clojure:'CLJ',scala:'SC',holyc:'HC'};
-  const langPips = topLangs.map(([l,cnt])=>{const lt=LANG_TRAITS[l]||{color:'#888'};const abbr=LANG_ABBR[l]||(l.slice(0,3).toUpperCase());return `<div class="pip" style="background:${lt.color}" title="${esc(l)}: ${cnt} edits"><span>${abbr}</span></div>`;}).join('');
-  const featBadges = state.unlockedFeatures.map(f=>`<span class="fbadge" style="border-color:${f.color}88;color:${f.color}" title="${esc(f.desc)}">${esc(f.label)}</span>`).join('');
-  const hybridBox = currentHybrid?`<div class="hbox" style="border-color:${currentHybrid.color}55"><div class="hname" style="color:${currentHybrid.color}">⚡ ${currentHybrid.name}</div><div class="hdesc">${currentHybrid.desc}</div></div>`:'';
-  const cpuStr = state.cpuTempAvailable && state.cpuTemp !== null
+  const langPips    = topLangs.map(([l,cnt]) => { const lt = LANG_TRAITS[l]||{color:'#888'}; const abbr = LANG_ABBR[l]||(l.slice(0,3).toUpperCase()); return `<div class="pip" style="background:${lt.color}" title="${esc(l)}: ${cnt} edits"><span>${abbr}</span></div>`; }).join('');
+  const featBadges  = state.unlockedFeatures.map(f => `<span class="fbadge" style="border-color:${f.color}88;color:${f.color}" title="${esc(f.desc)}">${esc(f.label)}</span>`).join('');
+  const hybridBox   = currentHybrid ? `<div class="hbox" style="border-color:${currentHybrid.color}55"><div class="hname" style="color:${currentHybrid.color}">⚡ ${currentHybrid.name}</div><div class="hdesc">${currentHybrid.desc}</div></div>` : '';
+  const cpuStr      = state.cpuTempAvailable && state.cpuTemp !== null
     ? (() => { const col = state.cpuTemp >= 80 ? '#f44336' : state.cpuTemp >= 60 ? '#f4a261' : 'var(--d)'; return `<span style="color:${col}">cpu: ${state.cpuTemp}°C</span>`; })()
     : '';
+  return { langPips, featBadges, hybridBox, cpuStr };
+}
 
-  webview.html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
-<style>
+function renderStyles(c, bc) {
+  return `<style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--c:${c};--bc:${bc};--bg:var(--vscode-sideBar-background,#090910);--s:var(--vscode-input-background,#0e0e1a);--b:var(--vscode-panel-border,var(--vscode-widget-border,#1c1c2a));--t:var(--vscode-foreground,#b0b0c8);--d:var(--vscode-descriptionForeground,#454560)}
 body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font-size:11px;overflow-x:hidden}
@@ -1212,144 +1101,20 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 .sl2{position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.02) 2px,rgba(0,0,0,.02) 4px);pointer-events:none;z-index:999}
 /* Stats row */
 .stat-row-inline{display:flex;justify-content:space-between;font-size:9px;color:var(--d);margin-top:2px}
-@keyframes creature-blink{0%,44%{opacity:0}45%,48%{opacity:1}49%,74%{opacity:0}75%,93%{opacity:1}94%,100%{opacity:0}}
-@keyframes creature-blink-half{0%,13%{opacity:0}14%,44%{opacity:1}45%,48%{opacity:0}49%,64%{opacity:1}65%,68%{opacity:0}69%,74%{opacity:1}75%,93%{opacity:0}94%{opacity:1}95%,100%{opacity:0}}
+@keyframes creature-open-track{0%,44%{opacity:0}45%,48%{opacity:1}49%,100%{opacity:0}}
+@keyframes creature-half-track{0%,44%{opacity:1}45%,48%{opacity:0}49%,74%{opacity:1}75%,93%{opacity:0}94%,100%{opacity:1}}
+@keyframes creature-closed-track{0%,74%{opacity:0}75%,93%{opacity:1}94%,100%{opacity:0}}
 .eye-container .eyes-open{opacity:0}.eye-container .eyes-half{opacity:1}.eye-container .eyes-closed{opacity:0}
-.eye-container.normal .eyes-closed{animation:creature-blink 7s infinite}
-.eye-container.normal .eyes-open{animation:creature-blink 7s infinite;animation-delay:1.4s}
-.eye-container.normal .eyes-half{animation:creature-blink-half 7s infinite}
+.eye-container.normal .eyes-open{animation:creature-open-track 7s infinite}
+.eye-container.normal .eyes-half{animation:creature-half-track 7s infinite}
+.eye-container.normal .eyes-closed{animation:creature-closed-track 7s infinite}
 .eye-container.eating .eyes-half{opacity:1}.eye-container.eating .eyes-open{opacity:0}.eye-container.eating .eyes-closed{opacity:0}
 .eye-container.dim .eyes-half{opacity:0}.eye-container.dim .eyes-open{opacity:0}.eye-container.dim .eyes-closed{opacity:1}
-</style></head><body>
-<div class="sl2"></div>
-<div class="w mood-${mood}">
+</style>`;
+}
 
-  <!-- Header -->
-  <div class="hdr">
-    <div>
-      <div class="nm" onclick="tr()" title="click to rename">${esc(state.name)}</div>
-      <div class="es">${hasStartedCoding ? evo.name : 'egg'}${state.generation>0?` <span style="opacity:0.5">[gen ${state.generation+1}]</span>`:''}</div>
-      ${state.inheritedFrom?`<div style="font-size:8px;color:var(--d);margin-top:1px">descended from ${esc(state.inheritedFrom)}</div>`:''}
-    </div>
-    <div style="text-align:right"><div class="me">${moodEmoji}</div><div class="mw">${mood}</div></div>
-  </div>
-  <div class="rw" id="rw"><input id="ri" maxlength="20" value="${esc(state.name)}"/><button onclick="dr()">OK</button></div>
-
-  <!-- Creature -->
-  <div class="cf">
-    <div class="speech-bubble-wrap" style="${state.patternComment?'min-height:52px':''}">` + (state.patternComment && !state._eating && !state._nomnom && !state._burping ?`<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>`:'') + `</div>
-    ${(hasStartedCoding || state.unlockedGhost) ? (isHolyC ? buildHolyCCreatureSVG(evoIdx,c,bc,mood,state.unlockedFeatures,getFoodStr(state)) : buildCreatureForLang(state.dominantLang,evoIdx,c,bc,mood,state.unlockedFeatures,state.installedExtTraits,getFoodStr(state),state.unlockedGhost)) : buildEggSVG(state.installedExtTraits,c)}
-    ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
-    ${state._nomnom ? `<div class="${Math.random()<0.5?'nom-bubble':'nomnom-bubble'}">${Math.random()<0.5?'*nom*':'*nomnom*'}</div>` : ''}
-    ${hasStartedCoding && featBadges?`<button class="dna-toggle" data-key="dna" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>`:''}
-    <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
-  </div>
-
-  ${hybridBox}
-
-  <!-- Stats -->
-  <div class="sts">
-    <div class="sr"><div class="sl">hunger</div><div class="sb"><div class="sf fh${state.isEatingRam ? ' hunger-crit' : ''}" style="width:${state.hunger}%"></div></div><div class="sv">${Math.round(state.hunger)}</div></div>
-    <div class="sr"><div class="sl">mood</div><div class="sb"><div class="sf fm" style="width:${state.mood}%"></div></div><div class="sv">${Math.round(state.mood)}</div></div>
-    <div class="sr"><div class="sl">xp</div><div class="sb"><div class="sf fx" style="width:${xpPct}%"></div></div><div class="sv">${state.xp}</div></div>
-  </div>
-  ${nextEvo?`<div class="sub">${nextEvo.minXP-state.xp} xp → ${nextEvo.name}</div>`:'<div class="sub">MAX FORM</div>'}
-  ${hint||hybridHint}
-  <div class="stat-row-inline"><span>edits: ${totalEdits}</span><span>bugs: ${state.bugsFound}</span><span>commits: ${state.totalCommits||0}</span><span>streak: ${state.feedStreak||0}d</span>${cpuStr}</div>
-  ${state.isEatingRam ? `<div class="ram-counter">⚠ RAM consumed: ${ramGremlins.length * 5}MB / 50MB</div>` : ''}
-
-  <!-- Actions -->
-  <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Pet</button></div>
-  <button onclick="openChase()" style="width:100%;margin-top:5px;border-color:${c}44;font-size:9px">⬤ Chase Ball</button>
-  <div id="ng-confirm" style="display:none;background:var(--s);border:1px solid #f4433644;border-radius:4px;padding:8px 10px;font-size:9px;color:var(--d)">
-    Retire ${esc(state.name)} and begin a new generation.<br/>One DNA trait will carry forward. Name your successor. 
-    <div style="display:flex;gap:5px;margin-top:6px">
-      <button onclick="s('prestige')" style="flex:1;border-color:#f4433688;color:#f44336">✦ Prestige</button>
-      <button onclick="document.getElementById('ng-confirm').style.display='none'" style="flex:1">Cancel</button>
-    </div>
-  </div>
-  <button onclick="document.getElementById('ng-confirm').style.display=(document.getElementById('ng-confirm').style.display==='none'?'block':'none')" style="width:100%;opacity:0.3;font-size:8px">⟳ new game+</button>
-
-  <hr/>
-
-  <!-- DNA -->
-  ${topLangs.length?`<div><div class="stl">DNA</div><div class="lr">${langPips}</div></div>`:'<div class="sub">start coding to shape your creature</div>'}
-
-  <hr/>
-
-  <!-- Debug challenge -->
-  <div class="section-header">[ debug ]</div>
-  ${puzzleHtml}
-
-  <hr/>
-
-  <!-- Codex -->
-  <button class="dna-toggle" data-key="codex" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>codex</button>
-  <div class="dna-drawer">
-  <div class="section-box" style="width:100%">
-    <div class="sec-title">evolution stages</div>
-    ${codexEvo}
-  </div>
-  <div class="section-box" style="margin-top:6px;width:100%">
-    <div class="sec-title">hybrid forms</div>
-    ${codexHybrids}
-  </div>
-  </div>
-
-  <hr/>
-
-  <!-- Achievements -->
-  <button class="dna-toggle" data-key="ach" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>achievements (${state.achievements.length})</button>
-  <div class="dna-drawer">
-  <div class="ach-grid" style="width:100%">${achHtml}</div>
-  </div>
-
-  <hr/>
-
-  <!-- Lore -->
-  <button class="dna-toggle" data-key="lore" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lore (${state.unlockedLore.length})</button>
-  <div class="dna-drawer">${loreHtml}</div>
-
-  ${state.generations && state.generations.length > 0 ? `
-  <hr/>
-  <!-- Lineage -->
-  <button class="dna-toggle" data-key="lineage" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lineage (${state.generations.length})</button>
-  <div class="dna-drawer">
-    ${[...state.generations].reverse().map((g, i) => {
-      const retiredDate = new Date(g.retiredAt).toLocaleDateString('en-NZ', {day:'numeric', month:'short', year:'numeric'});
-      const langLabel = g.dominantLang || 'unknown';
-      const featList = g.features && g.features.length ? g.features.map(f => f.label).join(', ') : 'none';
-      return `<div style="border:1px solid var(--b);border-radius:4px;padding:7px 9px;margin-bottom:6px;font-size:9px;color:var(--d)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-size:10px;color:var(--fg);font-weight:600">${esc(g.name)}</span>
-          <span style="opacity:0.5">gen ${g.generation + 1}</span>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-          <span>⬡ ${g.xp >= 1000 ? (g.xp/1000).toFixed(1)+'k' : g.xp} xp</span>
-          <span>⚙ ${g.bugsFound||0} bugs</span>
-          <span>↑ ${g.totalCommits||0} commits</span>
-        </div>
-        <div style="margin-bottom:2px">dominant: <span style="color:${g.dominantColor||'#888'}">${langLabel}</span></div>
-        <div style="margin-bottom:2px;opacity:0.7">traits: ${esc(featList)}</div>
-        <div style="opacity:0.4">retired ${retiredDate}</div>
-      </div>`;
-    }).join('')}
-  </div>` : ''}
-
-</div>
-
-<div id="chase-overlay">
-  <div id="chase-msg">press → to chase!</div>
-  <div id="chase-field">
-    <div id="chase-bg"></div>
-    <div id="chase-ground"></div>
-    <svg id="chase-creature" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><ellipse cx="50" cy="60" rx="18" ry="22" fill="${c}30" stroke="${c}" stroke-width="2"/><circle cx="42" cy="48" r="4" fill="${c}"/><circle cx="43.5" cy="46.5" r="1.2" fill="white"/><circle cx="58" cy="48" r="4" fill="${c}"/><circle cx="59.5" cy="46.5" r="1.2" fill="white"/><path d="M41 58 Q50 67 59 58" stroke="${c}" stroke-width="2.5" fill="none" stroke-linecap="round"/></svg>
-    <div id="chase-ball"></div>
-  </div>
-  <div id="chase-result"></div>
-  <div id="chase-hint">tap → to run &nbsp;|&nbsp; esc to quit</div>
-</div>
-<script>
+function renderScripts(c) {
+  return `<script>
 const vscode=acquireVsCodeApi();
 function s(t,v){vscode.postMessage({type:t,value:v})}
 (function(){const st=vscode.getState()||{};document.querySelectorAll('.dna-toggle[data-key]').forEach(function(btn){const k=btn.getAttribute('data-key');if(st[k]){const d=btn.nextElementSibling;d.classList.add('open');btn.querySelector('.arr').style.transform='rotate(90deg)';btn.setAttribute('aria-expanded','true');}});})();
@@ -1446,8 +1211,36 @@ document.addEventListener('keydown',function(e){
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}
 document.getElementById('ri')?.addEventListener('keydown',e=>{if(e.key==='Enter')dr();if(e.key==='Escape')document.getElementById('rw').classList.remove('on')});
 (function(){const t=document.getElementById('tongue-layer');if(!t)return;function f(){const d=1500+Math.random()*7000;setTimeout(function(){const b=document.body.classList;if(!b.contains('mood-sleeping')&&!b.contains('mood-drowsy')){t.style.display='';setTimeout(function(){t.style.display='none';f()},350)}else{f()}},d)}f()})();
-</script></body></html>`;
+<\/script>`;
 }
+
+function renderLineage(state) {
+  if (!state.generations || !state.generations.length) return '';
+  const entries = [...state.generations].reverse().map(g => {
+    const retiredDate = new Date(g.retiredAt).toLocaleDateString('en-NZ', {day:'numeric', month:'short', year:'numeric'});
+    const langLabel   = g.dominantLang || 'unknown';
+    const featList    = g.features && g.features.length ? g.features.map(f => f.label).join(', ') : 'none';
+    return `<div style="border:1px solid var(--b);border-radius:4px;padding:7px 9px;margin-bottom:6px;font-size:9px;color:var(--d)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:10px;color:var(--t);font-weight:600">${esc(g.name)}</span>
+        <span style="opacity:0.5">gen ${g.generation + 1}</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+        <span>⬡ ${g.xp >= 1000 ? (g.xp/1000).toFixed(1)+'k' : g.xp} xp</span>
+        <span>⚙ ${g.bugsFound||0} bugs</span>
+        <span>↑ ${g.totalCommits||0} commits</span>
+      </div>
+      <div style="margin-bottom:2px">dominant: <span style="color:${g.dominantColor||'#888'}">${langLabel}</span></div>
+      <div style="margin-bottom:2px;opacity:0.7">traits: ${esc(featList)}</div>
+      <div style="opacity:0.4">retired ${retiredDate}</div>
+    </div>`;
+  }).join('');
+  return `<hr/>
+  <button class="dna-toggle" data-key="lineage" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">&#9656;</i>lineage (${state.generations.length})</button>
+  <div class="dna-drawer">${entries}</div>`;
+}
+
+
 
 function deactivate() {
   if (ramGremlinInterval)      { clearInterval(ramGremlinInterval);      ramGremlinInterval      = null; }
