@@ -640,7 +640,7 @@ const ACHIEVEMENTS = [
   { id: 'ach_first_bug',     glyph: '◌', label: 'Debugger',           desc: 'Found your first bug in the mini-game.',   check: s => s.bugsFound >= 1 },
   { id: 'ach_ten_bugs',      glyph: '◌', label: 'Bug Hunter',         desc: 'Found 10 bugs in the mini-game.',          check: s => s.bugsFound >= 10 },
   { id: 'ach_evolution',     glyph: '▲', label: 'Evolved',            desc: 'Reached Glitchling stage.',                check: s => s.xp >= 400 },
-  { id: 'ach_archetype',     glyph: '▲', label: 'Archetype',          desc: 'Reached final evolution.',                 check: s => s.xp >= 7000 },
+  { id: 'ach_archetype',     glyph: '▲', label: 'Archetype',          desc: 'Reached archetype evolution.',             check: s => s.xp >= 7000 },
   { id: 'ach_fed_every_day', glyph: '◇', label: 'Caretaker',          desc: 'Fed your creature 7 days in a row.',       check: s => (s.feedStreak||0) >= 7 },
 ];
 
