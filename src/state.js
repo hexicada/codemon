@@ -2,61 +2,21 @@ const { DEBUG_PUZZLES } = require('./data');
 
 const STORAGE_KEY    = 'codemonState_v4';
 const STORAGE_KEY_V3 = 'codemonState_v3';
+const STORAGE_SCHEMA = 'multiSlots_v1';
+const SLOT_COUNT = 3;
+const PARADIGM_XP = 11000;
 
 const PATTERN_COMMENT_TTL_MS              = 10000;
 const PATTERN_COMMENT_DISMISS_COOLDOWN_MS = 30000;
 
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-function loadState(context) {
-  const saved = context.globalState.get(STORAGE_KEY)
-    || (() => { const v3 = context.globalState.get(STORAGE_KEY_V3); return v3 ? { ...v3, _migratedFromV3: true } : null; })();
-  if (saved) {
-    saved.xp                             = Number.isFinite(saved.xp) ? saved.xp : 0;
-    saved.hunger                         = Number.isFinite(saved.hunger) ? saved.hunger : 100;
-    saved.mood                           = Number.isFinite(saved.mood) ? saved.mood : 80;
-    saved.langCounts                     = (saved.langCounts && typeof saved.langCounts === 'object') ? saved.langCounts : {};
-    saved.unlockedFeatures               = Array.isArray(saved.unlockedFeatures) ? saved.unlockedFeatures : [];
-    saved.activeHybrids                  = Array.isArray(saved.activeHybrids) ? saved.activeHybrids : [];
-    saved.installedExtTraits             = Array.isArray(saved.installedExtTraits) ? saved.installedExtTraits : [];
-    saved.dominantLang                   = saved.dominantLang || null;
-    saved.dominantColor                  = saved.dominantColor || '#888888';
-    saved.blendColor                     = saved.blendColor || saved.dominantColor || '#888888';
-    saved.lastActive                     = Number.isFinite(saved.lastActive) ? saved.lastActive : Date.now();
-    saved.name                           = (typeof saved.name === 'string' && saved.name.trim()) ? saved.name : 'Unnamed';
-    saved.lastMorningFeedDate            = saved.lastMorningFeedDate   || null;
-    saved.lastAfternoonFeedDate          = saved.lastAfternoonFeedDate || null;
-    saved.bugsFound                      = saved.bugsFound    || 0;
-    saved.bugsAttempted                  = saved.bugsAttempted || 0;
-    saved.achievements                   = saved.achievements || [];
-    saved.unlockedLore                   = saved.unlockedLore || [];
-    saved.unlockedGhost                  = saved.unlockedGhost || false;
-    saved.patternComment                 = saved.patternComment || null;
-    saved.patternCommentExpiresAt        = Number.isFinite(saved.patternCommentExpiresAt) ? saved.patternCommentExpiresAt : null;
-    saved.patternCommentDismissedUntil   = Number.isFinite(saved.patternCommentDismissedUntil) ? saved.patternCommentDismissedUntil : null;
-    saved.codedPastMidnight              = saved.codedPastMidnight  || false;
-    saved.codedOnWeekend                 = saved.codedOnWeekend     || false;
-    saved.longestSessionMinutes          = saved.longestSessionMinutes || 0;
-    saved.sessionStartTime               = saved.sessionStartTime   || null;
-    saved.feedStreak                     = saved.feedStreak         || 0;
-    saved.lastFeedDate                   = saved.lastFeedDate       || null;
-    saved.activePuzzle                   = saved.activePuzzle       || null;
-    saved.puzzleState                    = saved.puzzleState        || 'idle'; // idle | active | solved | failed
-    saved.puzzleLang                     = saved.puzzleLang         || null;  // null = auto (dominant lang)
-    saved.totalCommits                   = saved.totalCommits       || 0;
-    saved.lastProcessComment             = saved.lastProcessComment || null;
-    saved.cpuTemp                        = saved.cpuTemp     != null ? saved.cpuTemp : null;
-    saved.cpuTempAvailable               = saved.cpuTempAvailable   || false;
-    saved.generation                     = saved.generation         || 0;
-    saved.generations                    = saved.generations        || [];
-    saved.inheritedFrom                  = saved.inheritedFrom      || null;
-    saved.inheritedFeature               = saved.inheritedFeature   || null;
-    saved.starvedSince                   = saved.starvedSince  != null ? saved.starvedSince : null;
-    saved.isEatingRam                    = saved.isEatingRam        || false;
-    saved.feralSince                     = saved.feralSince    != null ? saved.feralSince : null;
-    saved._playful                       = false;
-    return saved;
-  }
+function clampSlotIndex(i) {
+  const n = Number.isFinite(i) ? i : 0;
+  return Math.max(0, Math.min(SLOT_COUNT - 1, n));
+}
+
+function createDefaultCreatureState() {
   return {
     xp:0, hunger:100, mood:80,
     langCounts:{}, unlockedFeatures:[], activeHybrids:[],
@@ -77,8 +37,144 @@ function loadState(context) {
   };
 }
 
+function normalizeCreatureState(saved) {
+  const out = { ...createDefaultCreatureState(), ...(saved || {}) };
+  out.xp                             = Number.isFinite(out.xp) ? out.xp : 0;
+  out.hunger                         = Number.isFinite(out.hunger) ? out.hunger : 100;
+  out.mood                           = Number.isFinite(out.mood) ? out.mood : 80;
+  out.langCounts                     = (out.langCounts && typeof out.langCounts === 'object') ? out.langCounts : {};
+  out.unlockedFeatures               = Array.isArray(out.unlockedFeatures) ? out.unlockedFeatures : [];
+  out.activeHybrids                  = Array.isArray(out.activeHybrids) ? out.activeHybrids : [];
+  out.installedExtTraits             = Array.isArray(out.installedExtTraits) ? out.installedExtTraits : [];
+  out.dominantLang                   = out.dominantLang || null;
+  out.dominantColor                  = out.dominantColor || '#888888';
+  out.blendColor                     = out.blendColor || out.dominantColor || '#888888';
+  out.lastActive                     = Number.isFinite(out.lastActive) ? out.lastActive : Date.now();
+  out.name                           = (typeof out.name === 'string' && out.name.trim()) ? out.name : 'Unnamed';
+  out.lastMorningFeedDate            = out.lastMorningFeedDate   || null;
+  out.lastAfternoonFeedDate          = out.lastAfternoonFeedDate || null;
+  out.bugsFound                      = out.bugsFound    || 0;
+  out.bugsAttempted                  = out.bugsAttempted || 0;
+  out.achievements                   = out.achievements || [];
+  out.unlockedLore                   = out.unlockedLore || [];
+  out.unlockedGhost                  = out.unlockedGhost || false;
+  out.patternComment                 = out.patternComment || null;
+  out.patternCommentExpiresAt        = Number.isFinite(out.patternCommentExpiresAt) ? out.patternCommentExpiresAt : null;
+  out.patternCommentDismissedUntil   = Number.isFinite(out.patternCommentDismissedUntil) ? out.patternCommentDismissedUntil : null;
+  out.codedPastMidnight              = out.codedPastMidnight  || false;
+  out.codedOnWeekend                 = out.codedOnWeekend     || false;
+  out.longestSessionMinutes          = out.longestSessionMinutes || 0;
+  out.sessionStartTime               = out.sessionStartTime   || null;
+  out.feedStreak                     = out.feedStreak         || 0;
+  out.lastFeedDate                   = out.lastFeedDate       || null;
+  out.activePuzzle                   = out.activePuzzle       || null;
+  out.puzzleState                    = out.puzzleState        || 'idle';
+  out.puzzleLang                     = out.puzzleLang         || null;
+  out.totalCommits                   = out.totalCommits       || 0;
+  out.lastProcessComment             = out.lastProcessComment || null;
+  out.cpuTemp                        = out.cpuTemp     != null ? out.cpuTemp : null;
+  out.cpuTempAvailable               = out.cpuTempAvailable   || false;
+  out.generation                     = out.generation         || 0;
+  out.generations                    = out.generations        || [];
+  out.inheritedFrom                  = out.inheritedFrom      || null;
+  out.inheritedFeature               = out.inheritedFeature   || null;
+  out.starvedSince                   = out.starvedSince  != null ? out.starvedSince : null;
+  out.isEatingRam                    = out.isEatingRam        || false;
+  out.feralSince                     = out.feralSince    != null ? out.feralSince : null;
+  out._playful                       = false;
+  return out;
+}
+
+function ensureSlotUnlocks(account, active) {
+  if ((active.xp || 0) >= PARADIGM_XP) {
+    account.unlockedSlots = [true, true, true];
+  }
+}
+
+function createAccountFromLegacy(legacy) {
+  const slot0 = normalizeCreatureState(legacy);
+  const account = {
+    schema: STORAGE_SCHEMA,
+    activeSlotIndex: 0,
+    unlockedSlots: [true, false, false],
+    slots: [slot0, createDefaultCreatureState(), createDefaultCreatureState()],
+    globals: {},
+  };
+  ensureSlotUnlocks(account, slot0);
+  return account;
+}
+
+function normalizeAccount(saved) {
+  const slotsIn = Array.isArray(saved.slots) ? saved.slots : [];
+  const slots = [];
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    slots.push(normalizeCreatureState(slotsIn[i]));
+  }
+
+  const unlockedIn = Array.isArray(saved.unlockedSlots) ? saved.unlockedSlots : [];
+  const unlockedSlots = [];
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    unlockedSlots.push(i === 0 ? true : !!unlockedIn[i]);
+  }
+
+  const account = {
+    schema: STORAGE_SCHEMA,
+    activeSlotIndex: clampSlotIndex(saved.activeSlotIndex),
+    unlockedSlots,
+    slots,
+    globals: (saved.globals && typeof saved.globals === 'object') ? saved.globals : {},
+  };
+
+  if (!account.unlockedSlots[account.activeSlotIndex]) {
+    account.activeSlotIndex = 0;
+  }
+  ensureSlotUnlocks(account, account.slots[account.activeSlotIndex]);
+  return account;
+}
+
+function attachAccountMeta(activeSlot, account) {
+  Object.defineProperty(activeSlot, '__account', {
+    value: account,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
+}
+
+function buildPersistableAccount(state) {
+  if (state && state.__account && state.__account.schema === STORAGE_SCHEMA) {
+    const account = state.__account;
+    const idx = clampSlotIndex(account.activeSlotIndex);
+    account.activeSlotIndex = account.unlockedSlots[idx] ? idx : 0;
+    account.slots[account.activeSlotIndex] = normalizeCreatureState(state);
+    ensureSlotUnlocks(account, account.slots[account.activeSlotIndex]);
+    return account;
+  }
+
+  return createAccountFromLegacy(state);
+}
+
+function loadState(context) {
+  const saved = context.globalState.get(STORAGE_KEY)
+    || (() => {
+      const v3 = context.globalState.get(STORAGE_KEY_V3);
+      return v3 ? { ...v3, _migratedFromV3: true } : null;
+    })();
+
+  const account = saved && saved.schema === STORAGE_SCHEMA
+    ? normalizeAccount(saved)
+    : createAccountFromLegacy(saved || createDefaultCreatureState());
+
+  const activeIdx = clampSlotIndex(account.activeSlotIndex);
+  account.activeSlotIndex = account.unlockedSlots[activeIdx] ? activeIdx : 0;
+  const active = account.slots[account.activeSlotIndex];
+  attachAccountMeta(active, account);
+  return active;
+}
+
 function saveState(context, state) {
-  context.globalState.update(STORAGE_KEY, state);
+  const account = buildPersistableAccount(state);
+  context.globalState.update(STORAGE_KEY, account);
 }
 
 function canShowPatternComment(state) {
