@@ -7,7 +7,7 @@ try {
   console.error('[codemon] failed to load creatures/index, using fallback renderer:', err);
 }
 const { LORE_ENTRIES, ACHIEVEMENTS, PATTERN_COMMENTS, COMMIT_COMMENTS, PROCESS_COMMENTS, CPU_COMMENTS } = require('./data');
-const { loadState, saveState, canShowPatternComment, PATTERN_COMMENT_TTL_MS } = require('./state');
+const { loadState, saveState, switchSlot, canShowPatternComment, PATTERN_COMMENT_TTL_MS } = require('./state');
 const { createHandlers } = require('./handlers');
 const { featureOverlays } = require('./features');
 const { renderWebview } = require('./render');
@@ -295,7 +295,7 @@ function setupWebviewProvider(context) {
       webviewView.webview.options = {enableScripts:true};
       refreshWebview(webviewView.webview, creatureState);
 
-      const handlers = createHandlers(creatureState, {
+      let handlers = createHandlers(creatureState, {
         refresh:         (force) => saveAndRefresh(context, force),
         stopEatingRam,
         setChaseRunning: (v) => { chaseRunning = v; },
@@ -304,6 +304,22 @@ function setupWebviewProvider(context) {
       });
 
       webviewView.webview.onDidReceiveMessage(msg => {
+        if (msg.type === 'slot_switch') {
+          const next = switchSlot(context, creatureState, msg.value);
+          if (next && next !== creatureState) {
+            creatureState = next;
+            // Rebuild handlers bound to the new state object
+            Object.assign(handlers, createHandlers(creatureState, {
+              refresh:         (force) => saveAndRefresh(context, force),
+              stopEatingRam,
+              setChaseRunning: (v) => { chaseRunning = v; },
+              unlockLore,
+              PRESTIGE_NAMES,
+            }));
+            refreshWebview(webviewView.webview, creatureState);
+          }
+          return;
+        }
         if (handlers[msg.type]) handlers[msg.type](msg);
         const newAch = checkAchievements(creatureState);
         newAch.forEach(a => vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));

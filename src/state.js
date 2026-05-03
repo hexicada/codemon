@@ -177,6 +177,26 @@ function saveState(context, state) {
   context.globalState.update(STORAGE_KEY, account);
 }
 
+// Switch to targetIndex slot. Persists current slot first, returns new active slot.
+// Returns null if the slot is locked or index is out of range.
+function switchSlot(context, state, targetIndex) {
+  const account = state && state.__account;
+  if (!account) return null;
+
+  const idx = clampSlotIndex(targetIndex);
+  if (!account.unlockedSlots[idx]) return null;
+  if (idx === account.activeSlotIndex) return state;
+
+  // Persist current slot into account
+  account.slots[account.activeSlotIndex] = normalizeCreatureState(state);
+  account.activeSlotIndex = idx;
+
+  const active = account.slots[idx];
+  attachAccountMeta(active, account);
+  context.globalState.update(STORAGE_KEY, account);
+  return active;
+}
+
 function canShowPatternComment(state) {
   return !state.patternCommentDismissedUntil || Date.now() >= state.patternCommentDismissedUntil;
 }
@@ -194,8 +214,11 @@ module.exports = {
   STORAGE_KEY,
   PATTERN_COMMENT_TTL_MS,
   PATTERN_COMMENT_DISMISS_COOLDOWN_MS,
+  SLOT_COUNT,
+  PARADIGM_XP,
   loadState,
   saveState,
+  switchSlot,
   canShowPatternComment,
   getPuzzleForState,
 };

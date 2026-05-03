@@ -6,6 +6,17 @@ function renderStyles(c, bc) {
 :root{--c:${c};--bc:${bc};--bg:var(--vscode-sideBar-background,#090910);--s:var(--vscode-input-background,#0e0e1a);--b:var(--vscode-panel-border,var(--vscode-widget-border,#1c1c2a));--t:var(--vscode-foreground,#b0b0c8);--d:var(--vscode-descriptionForeground,#454560)}
 body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font-size:11px;overflow-x:hidden}
 .w{padding:11px;display:flex;flex-direction:column;gap:9px}
+.slot-carousel{display:grid;grid-template-columns:28px 1fr 28px;gap:6px;align-items:center}
+.slot-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.slot-nav{padding:6px 0;font-size:11px;line-height:1;height:100%}
+.slot-chip{display:flex;align-items:center;gap:7px;padding:7px 6px;text-align:left;min-height:42px;text-transform:none;letter-spacing:0;border-color:var(--b)}
+.slot-chip.active{border-color:var(--c);background:${c}12;box-shadow:0 0 0 1px ${c}22 inset}
+.slot-chip.locked{opacity:.45}
+.slot-chip:disabled{cursor:not-allowed}
+.slot-chip-index{width:18px;flex-shrink:0;font-family:'VT323',monospace;font-size:16px;color:var(--c);text-align:center}
+.slot-chip-copy{display:flex;flex-direction:column;min-width:0}
+.slot-chip-name{font-size:8px;color:var(--t);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-chip-stage{font-size:7px;color:var(--d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Header */
 .hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--b);padding-bottom:8px}
 .nm{font-family:'VT323',monospace;font-size:22px;color:var(--c);letter-spacing:1px;cursor:pointer;text-shadow:0 0 10px var(--c)55}
@@ -151,6 +162,9 @@ function renderScripts(c) {
   return `<script>
 const vscode=acquireVsCodeApi();
 function s(t,v){vscode.postMessage({type:t,value:v})}
+function getSlotButtons(){return Array.from(document.querySelectorAll('.slot-chip:not([disabled])'))}
+function switchSlot(i){s('slot_switch',i)}
+function cycleSlot(dir){const buttons=getSlotButtons();if(!buttons.length)return;const active=Math.max(0,buttons.findIndex(b=>b.classList.contains('active')));const next=(active+dir+buttons.length)%buttons.length;const target=buttons[next];if(target)target.click()}
 (function(){const st=vscode.getState()||{};document.querySelectorAll('.dna-toggle[data-key]').forEach(function(btn){const k=btn.getAttribute('data-key');if(st[k]){const d=btn.nextElementSibling;d.classList.add('open');btn.querySelector('.arr').style.transform='rotate(90deg)';btn.setAttribute('aria-expanded','true');}});})();
 function tr(){const w=document.getElementById('rw');w.classList.toggle('on');if(w.classList.contains('on'))document.getElementById('ri').focus()}
 function toggleDna(btn){const d=btn.nextElementSibling;const open=d.classList.toggle('open');btn.querySelector('.arr').style.transform=open?'rotate(90deg)':'';btn.setAttribute('aria-expanded',open);const k=btn.getAttribute('data-key');if(k){const st=vscode.getState()||{};st[k]=open;vscode.setState(st);}}
@@ -240,6 +254,11 @@ document.addEventListener('keydown',function(e){
     e.preventDefault();
     cX=Math.min(cX+TAP_BOOST,FIELD_W-CREAT_W);
     document.getElementById('chase-creature').style.left=cX+'px';
+    return;
+  }
+  if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&!e.repeat&&!chaseActive){
+    e.preventDefault();
+    cycleSlot(e.key==='ArrowRight'?1:-1);
   }
 });
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}

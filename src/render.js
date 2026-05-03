@@ -234,6 +234,20 @@ function renderWebview(webview, state, deps) {
   const lineage = renderLineage(state, shared);
   const styles = renderStyles(c, bc);
   const scripts = renderScripts(c);
+  const account = state.__account;
+  const activeSlotIndex = account ? account.activeSlotIndex : 0;
+  const slotButtons = account
+    ? account.slots.map((slot, index) => {
+        const unlocked = !!account.unlockedSlots[index];
+        const active = index === activeSlotIndex;
+        const slotLabel = unlocked ? (slot.name || `Slot ${index + 1}`) : 'Locked';
+        const slotStage = unlocked ? getEvolution(slot.xp).name : 'Reach Paradigm to unlock';
+        return `<button class="slot-chip${active ? ' active' : ''}${unlocked ? '' : ' locked'}" onclick="switchSlot(${index})" ${unlocked ? '' : 'disabled'} title="${esc(slotLabel)}">
+          <span class="slot-chip-index">${unlocked ? index + 1 : '🔒'}</span>
+          <span class="slot-chip-copy"><span class="slot-chip-name">${esc(slotLabel)}</span><span class="slot-chip-stage">${esc(slotStage)}</span></span>
+        </button>`;
+      }).join('')
+    : '';
 
   const rawChaseSvg = (hasStartedCoding || state.unlockedGhost)
     ? (isHolyC
@@ -247,6 +261,8 @@ function renderWebview(webview, state, deps) {
 ${styles}</head><body>
 <div class="sl2"></div>
 <div class="w mood-${mood}">
+
+  ${account ? `<div class="slot-carousel"><button class="slot-nav" onclick="cycleSlot(-1)" aria-label="Previous slot">◀</button><div class="slot-strip">${slotButtons}</div><button class="slot-nav" onclick="cycleSlot(1)" aria-label="Next slot">▶</button></div>` : ''}
 
   <!-- Header -->
   <div class="hdr">
