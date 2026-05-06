@@ -33,7 +33,8 @@ function createDefaultCreatureState() {
     _lastPuzzleHint:null,
     totalCommits:0, lastProcessComment:null, cpuTemp:null, cpuTempAvailable:false,
     generation:0, generations:[], inheritedFrom:null, inheritedFeature:null,
-    starvedSince:null, isEatingRam:false, feralSince:null, _playful:false,
+    starvedSince:null, isEatingRam:false, feralSince:null,
+    _eating:false, _burping:false, _nomnom:false, _playful:false,
   };
 }
 
@@ -81,6 +82,9 @@ function normalizeCreatureState(saved) {
   out.starvedSince                   = out.starvedSince  != null ? out.starvedSince : null;
   out.isEatingRam                    = out.isEatingRam        || false;
   out.feralSince                     = out.feralSince    != null ? out.feralSince : null;
+  out._eating                        = false;
+  out._burping                       = false;
+  out._nomnom                        = false;
   out._playful                       = false;
   return out;
 }
