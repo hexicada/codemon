@@ -1,6 +1,8 @@
 'use strict';
 
-function renderStyles(c, bc) {
+function renderStyles(c, bc, animationSpeed) {
+  animationSpeed = animationSpeed || 1;
+  const a = (dur) => `${(dur / animationSpeed).toFixed(2)}s`;
   return `<style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--c:${c};--bc:${bc};--bg:var(--vscode-sideBar-background,#090910);--s:var(--vscode-input-background,#0e0e1a);--b:var(--vscode-panel-border,var(--vscode-widget-border,#1c1c2a));--t:var(--vscode-foreground,#b0b0c8);--d:var(--vscode-descriptionForeground,#454560)}
@@ -26,19 +28,19 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 /* Creature */
 .cf{background:var(--s);border:1px solid var(--b);border-radius:4px;padding:13px;display:flex;flex-direction:column;align-items:center;gap:7px;position:relative;overflow:hidden}
 .cf::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 65%,${c}12 0%,transparent 70%);pointer-events:none}
-.creature-svg{width:94px;height:94px;animation:flt 3s ease-in-out infinite}
+.creature-svg{width:94px;height:94px;animation:flt ${a(3)} ease-in-out infinite}
 @keyframes flt{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes bnc{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-7px) scale(1.04)}}
 @keyframes slp{0%,100%{transform:rotate(-2deg)}50%{transform:translateY(-3px) rotate(2deg)}}
 @keyframes eat{0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(-4px) scale(1.06)}40%{transform:translateY(1px) scale(0.97)}60%{transform:translateY(-3px) scale(1.04)}80%{transform:translateY(0) scale(1)}}
 @keyframes food-rise{0%{transform:translateY(0);opacity:0}15%{opacity:1}80%{opacity:1}100%{transform:translateY(-18px);opacity:0}}
 @keyframes burp-pop{0%{transform:scale(0.4) rotate(-8deg);opacity:0}25%{transform:scale(1.15) rotate(4deg);opacity:1}70%{opacity:1}100%{transform:scale(0.9) rotate(-2deg);opacity:0}}
-.mood-eating .creature-svg{animation:eat 0.4s ease-in-out 3}
-.eating-food{animation:food-rise 1.2s ease-out forwards;transform-box:fill-box;transform-origin:center bottom}
-.burp-bubble{position:absolute;top:8px;right:10px;font-family:'VT323',monospace;font-size:18px;color:${c};animation:burp-pop 2s ease-in-out forwards;pointer-events:none;text-shadow:0 0 8px ${c}88}
-.nom-bubble{position:absolute;top:8px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop 1.8s ease-in-out forwards;pointer-events:none;opacity:0.85}
-.nomnom-bubble{position:absolute;top:2px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop 1.8s ease-in-out forwards;pointer-events:none;opacity:0.85;transform:rotate(7deg)}
-.mood-sleeping .creature-svg,.mood-drowsy .creature-svg{animation:slp 4s ease-in-out infinite}
+.mood-eating .creature-svg{animation:eat ${a(0.4)} ease-in-out 3}
+.eating-food{animation:food-rise ${a(1.2)} ease-out forwards;transform-box:fill-box;transform-origin:center bottom}
+.burp-bubble{position:absolute;top:8px;right:10px;font-family:'VT323',monospace;font-size:18px;color:${c};animation:burp-pop ${a(2)} ease-in-out forwards;pointer-events:none;text-shadow:0 0 8px ${c}88}
+.nom-bubble{position:absolute;top:8px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop ${a(1.8)} ease-in-out forwards;pointer-events:none;opacity:0.85}
+.nomnom-bubble{position:absolute;top:2px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop ${a(1.8)} ease-in-out forwards;pointer-events:none;opacity:0.85;transform:rotate(7deg)}
+.mood-sleeping .creature-svg,.mood-drowsy .creature-svg{animation:slp ${a(4)} ease-in-out infinite}
 .ed{font-size:9px;color:var(--d);line-height:1.5;font-style:italic;text-align:center}
 .dna-toggle{background:none;border:none;color:var(--c);font-family:'VT323',monospace;font-size:16px;letter-spacing:1px;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;width:100%;justify-content:center;border-top:1px solid var(--b);margin-top:4px}
 .dna-toggle:hover{opacity:0.8;background:none}
@@ -56,29 +58,41 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 .sb{height:3px;background:var(--b);border-radius:2px;overflow:hidden}
 .sf{height:100%;border-radius:2px;transition:width .5s}
 .fh{background:#f4a261}.fm{background:#7fc8f8}.fx{background:var(--c)}
-.fh.hunger-crit{background:#ff3333;animation:hblink 0.9s ease-in-out infinite}
+.fh.hunger-crit{background:#ff3333;animation:hblink ${a(0.9)} ease-in-out infinite}
 @keyframes hblink{0%,100%{background:#ff3333}50%{background:#ff7700}}
-.ram-counter{font-family:'VT323',monospace;font-size:13px;color:#ff4444;text-align:center;letter-spacing:1px;margin-top:2px;animation:hblink 0.8s ease-in-out infinite}
+.ram-counter{font-family:'VT323',monospace;font-size:13px;color:#ff4444;text-align:center;letter-spacing:1px;margin-top:2px;animation:hblink ${a(0.8)} ease-in-out infinite}
 @keyframes feralGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 20px 4px rgba(255,40,40,0.22)}}
-.mood-feral{animation:feralGlow 1.2s ease-in-out infinite}
-.mood-feral .cf{animation:ramshake 0.25s ease-in-out infinite}
-.mood-playful .creature-svg{animation:bnc 0.6s ease-in-out infinite}
+.mood-feral{animation:feralGlow ${a(1.2)} ease-in-out infinite}
+.mood-feral .cf{animation:ramshake ${a(0.25)} ease-in-out infinite}
+.mood-playful .creature-svg{animation:bnc ${a(0.6)} ease-in-out infinite}
 /* Chase overlay */
 #chase-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:12px}
 #chase-overlay.active{display:flex}
+#chase-overlay.shake{animation:chase-camera-shake ${a(0.18)} linear}
 #chase-field{width:260px;height:100px;border:1px solid var(--b);border-radius:4px;position:relative;overflow:hidden;background:var(--s)}
 #chase-ground{position:absolute;bottom:20px;left:0;right:0;height:1px;background:var(--b)}
-#chase-bg{position:absolute;left:-30px;right:0;top:0;bottom:20px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 28px,${c}22 28px,${c}22 29px);animation:chase-scroll 0.55s linear infinite;pointer-events:none}
+#chase-bg{position:absolute;left:-30px;right:0;top:0;bottom:20px;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 28px,${c}22 28px,${c}22 29px);animation:chase-scroll ${a(0.55)} linear infinite;pointer-events:none}
 @keyframes chase-scroll{from{background-position-x:0}to{background-position-x:-29px}}
+@keyframes chase-warmup-bob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-1px) scale(1.01)}}
+@keyframes chase-run-bob{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-2.3px) scale(1.025)}}
 #chase-creature{position:absolute;bottom:21px;width:22px;height:22px;z-index:2}
-#chase-ball{position:absolute;bottom:22px;left:222px;width:10px;height:10px;border-radius:50%;background:white;box-shadow:0 0 6px white,0 0 12px rgba(255,255,255,0.3);animation:ball-bounce 0.55s ease-in-out infinite alternate;z-index:2}
+#chase-field.warmup #chase-creature{animation:chase-warmup-bob ${a(0.75)} ease-in-out infinite;transform-origin:center bottom}
+#chase-field.running #chase-creature{animation:chase-run-bob ${a(0.24)} ease-in-out infinite;transform-origin:center bottom}
+#chase-field.near-catch #chase-creature{filter:drop-shadow(0 0 6px ${c}aa);animation:chase-near-creature ${a(0.14)} ease-in-out infinite;transform-origin:center bottom}
+#chase-field.win-pop #chase-creature{animation:chase-win-pop ${a(0.25)} ease-out}
+#chase-ball{position:absolute;bottom:22px;left:222px;width:10px;height:10px;border-radius:50%;background:white;box-shadow:0 0 6px white,0 0 12px rgba(255,255,255,0.3);animation:ball-bounce ${a(0.55)} ease-in-out infinite alternate;z-index:2}
+#chase-field.near-catch #chase-ball{animation:ball-bounce ${a(0.55)} ease-in-out infinite alternate,chase-near-ball ${a(0.14)} ease-in-out infinite;box-shadow:0 0 10px white,0 0 18px rgba(255,255,255,0.65)}
 @keyframes ball-bounce{from{bottom:22px}to{bottom:46px}}
+@keyframes chase-near-ball{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+@keyframes chase-near-creature{0%,100%{transform:translateY(-0.5px) scale(1.02)}50%{transform:translateY(-2.8px) scale(1.045)}}
+@keyframes chase-win-pop{0%{transform:translateY(-2px) scale(1.02)}45%{transform:translateY(-8px) scale(1.16)}100%{transform:translateY(0) scale(1)}}
+@keyframes chase-camera-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
 #chase-msg{font-family:'VT323',monospace;font-size:22px;color:var(--c);letter-spacing:1px;text-align:center;min-height:28px}
 #chase-key-hint{display:flex;flex-direction:column;align-items:center;gap:4px}
-#chase-key{font-family:'VT323',monospace;font-size:48px;color:var(--c);line-height:1;border:2px solid var(--c);border-radius:6px;padding:2px 14px;text-shadow:0 0 10px var(--c)88;box-shadow:0 0 8px var(--c)44;animation:key-pulse 1.2s ease-in-out infinite}
+#chase-key{font-family:'VT323',monospace;font-size:48px;color:var(--c);line-height:1;border:2px solid var(--c);border-radius:6px;padding:2px 14px;text-shadow:0 0 10px var(--c)88;box-shadow:0 0 8px var(--c)44;animation:key-pulse ${a(1.2)} ease-in-out infinite}
 #chase-key-label{font-size:10px;color:var(--d);letter-spacing:1px;text-transform:uppercase}
 @keyframes key-pulse{0%,100%{opacity:1;box-shadow:0 0 8px var(--c)44}50%{opacity:0.65;box-shadow:0 0 16px var(--c)88}}
-#chase-result{font-family:'VT323',monospace;font-size:32px;text-align:center;display:none;padding:10px 0;animation:result-pop 0.3s ease-out}
+#chase-result{font-family:'VT323',monospace;font-size:32px;text-align:center;display:none;padding:10px 0;animation:result-pop ${a(0.3)} ease-out}
 @keyframes result-pop{from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1}}
 .chase-win{color:#4caf50;text-shadow:0 0 12px #4caf5088}
 .chase-lose{color:var(--d)}
@@ -150,9 +164,9 @@ code{font-family:'Space Mono',monospace;font-size:9px;color:var(--t);white-space
 @keyframes creature-half-track{0%,44%{opacity:1}45%,48%{opacity:0}49%,74%{opacity:1}75%,93%{opacity:0}94%,100%{opacity:1}}
 @keyframes creature-closed-track{0%,74%{opacity:0}75%,93%{opacity:1}94%,100%{opacity:0}}
 .eye-container .eyes-open{opacity:0}.eye-container .eyes-half{opacity:1}.eye-container .eyes-closed{opacity:0}
-.eye-container.normal .eyes-open{animation:creature-open-track 7s infinite}
-.eye-container.normal .eyes-half{animation:creature-half-track 7s infinite}
-.eye-container.normal .eyes-closed{animation:creature-closed-track 7s infinite}
+.eye-container.normal .eyes-open{animation:creature-open-track ${a(7)} infinite}
+.eye-container.normal .eyes-half{animation:creature-half-track ${a(7)} infinite}
+.eye-container.normal .eyes-closed{animation:creature-closed-track ${a(7)} infinite}
 .eye-container.eating .eyes-half{opacity:1}.eye-container.eating .eyes-open{opacity:0}.eye-container.eating .eyes-closed{opacity:0}
 .eye-container.dim .eyes-half{opacity:0}.eye-container.dim .eyes-open{opacity:0}.eye-container.dim .eyes-closed{opacity:1}
 </style>`;
@@ -173,7 +187,13 @@ let chaseActive=false,chaseRaf=null,cX=30,finished=false,chaseFrame=0,chaseMsgSt
 const FIELD_W=260,CREAT_W=22,BALL_X=222,DRIFT=0.45,TAP_BOOST=15;
 function openChase(){
   const ov=document.getElementById('chase-overlay');
+  const field=document.getElementById('chase-field');
   ov.classList.add('active');
+  ov.classList.remove('shake');
+  field.classList.remove('near-catch');
+  field.classList.remove('win-pop');
+  field.classList.remove('running');
+  field.classList.add('warmup');
   s('chase_start');
   document.getElementById('chase-result').style.display='none';
   document.getElementById('chase-result').textContent='';
@@ -188,11 +208,14 @@ function openChase(){
 }
 function _countdown(n){
   const msg=document.getElementById('chase-msg');
+  const field=document.getElementById('chase-field');
   if(n>0){
     msg.textContent=n+'...';
     setTimeout(()=>_countdown(n-1),700);
   } else {
     msg.textContent='GO!';
+    field.classList.remove('warmup');
+    field.classList.add('running');
     document.getElementById('chase-key-hint').style.display='none';
     chaseActive=true;
     chaseRaf=requestAnimationFrame(_chaseLoop);
@@ -204,6 +227,9 @@ function _chaseLoop(){
   cX-=DRIFT;
   const gap=BALL_X-(cX+CREAT_W);
   const msg=document.getElementById('chase-msg');
+  const field=document.getElementById('chase-field');
+  if(gap<20&&gap>0) field.classList.add('near-catch');
+  else field.classList.remove('near-catch');
   if(gap<20&&gap>0&&chaseMsgState<3){chaseMsgState=3;msg.textContent='REACH!!'}
   else if(gap<55&&chaseMsgState<2){chaseMsgState=2;msg.textContent='almost there!'}
   else if(gap<110&&chaseMsgState<1){chaseMsgState=1;msg.textContent='getting closer!'}
@@ -217,11 +243,19 @@ function _chaseLoop(){
 function _endChase(win){
   finished=true;chaseActive=false;
   cancelAnimationFrame(chaseRaf);
+  const ov=document.getElementById('chase-overlay');
+  const field=document.getElementById('chase-field');
+  field.classList.remove('warmup');
+  field.classList.remove('running');
+  field.classList.remove('near-catch');
   const res=document.getElementById('chase-result');
   const msg=document.getElementById('chase-msg');
   document.getElementById('chase-key-hint').style.display='none';
   res.style.display='block';
   if(win){
+    field.classList.remove('win-pop');
+    void field.offsetWidth;
+    field.classList.add('win-pop');
     document.getElementById('chase-ball').style.opacity='0';
     res.className='chase-win';
     res.textContent='\u2605 GOT IT! \u2605';
@@ -230,8 +264,12 @@ function _endChase(win){
     setTimeout(()=>{
       document.getElementById('chase-overlay').classList.remove('active');
       document.getElementById('chase-ball').style.opacity='';
+      field.classList.remove('win-pop');
     },3000);
   } else {
+    ov.classList.remove('shake');
+    void ov.offsetWidth;
+    ov.classList.add('shake');
     res.className='chase-lose';
     res.textContent='too slow...';
     msg.textContent='fell behind!';
@@ -242,23 +280,29 @@ function _endChase(win){
   }
 }
 document.addEventListener('keydown',function(e){
+  const overlayOpen = document.getElementById('chase-overlay').classList.contains('active');
   if(e.key==='Escape'){
-    if(document.getElementById('chase-overlay').classList.contains('active')&&!finished){
+    if(overlayOpen&&!finished){
       chaseActive=false;finished=true;cancelAnimationFrame(chaseRaf);
+      const field=document.getElementById('chase-field');
+      field.classList.remove('warmup');
+      field.classList.remove('running');
+      field.classList.remove('near-catch');
+      field.classList.remove('win-pop');
       document.getElementById('chase-overlay').classList.remove('active');
       document.getElementById('chase-ball').style.opacity='';
       s('chase_abort');
     }
+  }
+  if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&!e.repeat&&overlayOpen&&!chaseActive){
+    e.preventDefault();
+    return;
   }
   if(e.key==='ArrowRight'&&!e.repeat&&chaseActive&&!finished){
     e.preventDefault();
     cX=Math.min(cX+TAP_BOOST,FIELD_W-CREAT_W);
     document.getElementById('chase-creature').style.left=cX+'px';
     return;
-  }
-  if((e.key==='ArrowRight'||e.key==='ArrowLeft')&&!e.repeat&&!chaseActive){
-    e.preventDefault();
-    cycleSlot(e.key==='ArrowRight'?1:-1);
   }
 });
 function dr(){const v=document.getElementById('ri').value.trim();if(v)s('rename',v);document.getElementById('rw').classList.remove('on')}

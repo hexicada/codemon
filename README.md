@@ -23,9 +23,9 @@ its element, color, and personality shift toward your dominant language
 | Stage | XP | Description |
 |---|---|---|
 | Eggling | 0 | Just hatched |
-| Glitchling | 100 | Flickering with potential |
-| Codespawn | 300 | Speaks your most-used language |
-| Synthecyst | 700 | Form reflects your stack |
+| Glitchling | 400 | Flickering with potential |
+| Codespawn | 1200 | Speaks your most-used language |
+| Synthecyst | 3000 | Form reflects your stack |
 | Archetype | 7000 | Elements like wings and claws added, depending on your languages |
 | Paradigm | 11,000 | A mirror of your coding self |
 
@@ -56,11 +56,23 @@ Having certain extensions installed gives your creature visible traits:
 
 ## Care
 
-- **Feed** — feed your codemon twice per day, 
-(default times 9.30am and 3.30pm, but as long as you feed them a few times, they are fine... and nothing bad will happen...)
+- **Feed** — feed your codemon twice per day
+(default times 09:30 and 15:30; configurable per workspace)
 - **Play** — debugging games in your favourite languages
-- **Chase Ball Game** 
+- **Start Chase** mini-game
 - **Idle too long** — your creature gets drowsy, then sleeps
+
+## Workspace Settings
+
+Codemon settings are workspace-scoped (different projects can have different pet behavior):
+
+- `codemon.difficulty`: `Chill`, `Normal`, `Hard`
+- `codemon.feedTime1`: first feed time (`HH:MM`)
+- `codemon.feedTime2`: second feed time (`HH:MM`)
+- `codemon.hungerDecayRate`: hunger/feral decay multiplier
+- `codemon.animationSpeed`: animation speed multiplier
+
+Open VS Code Settings and search for `Codemon`.
 
 ## Installation
 

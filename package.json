@@ -31,6 +31,50 @@
           "name": "Your Creature"
         }
       ]
+    },
+    "configuration": {
+      "title": "Codemon",
+      "properties": {
+        "codemon.difficulty": {
+          "type": "string",
+          "enum": ["Chill", "Normal", "Hard"],
+          "default": "Normal",
+          "description": "Creature progression difficulty. Chill: slower decay+slower XP. Normal: balanced. Hard: faster decay+less XP.",
+          "scope": "resource"
+        },
+        "codemon.feedTime1": {
+          "type": "string",
+          "default": "09:30",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "First daily feed time (HH:MM, 24hr format). Default: 09:30.",
+          "scope": "resource"
+        },
+        "codemon.feedTime2": {
+          "type": "string",
+          "default": "15:30",
+          "pattern": "^([01]?[0-9]|2[0-3]):[0-5][0-9]$",
+          "description": "Second daily feed time (HH:MM, 24hr format). Default: 15:30.",
+          "scope": "resource"
+        },
+        "codemon.hungerDecayRate": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 3,
+          "default": 1,
+          "step": 0.1,
+          "description": "Hunger decay multiplier. 0.5 = half speed, 2 = double speed. Affects both feeding schedule and feral timer.",
+          "scope": "resource"
+        },
+        "codemon.animationSpeed": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2,
+          "default": 1,
+          "step": 0.25,
+          "description": "Creature animation speed multiplier. 0.5 = half speed, 2 = double speed.",
+          "scope": "resource"
+        }
+      }
     }
   }
 }

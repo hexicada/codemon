@@ -13,6 +13,29 @@ const { featureOverlays } = require('./features');
 const { renderWebview } = require('./render');
 const { renderStyles, renderScripts } = require('./webviewAssets');
 
+// ── SETTINGS HELPERS ──────────────────────────────────────────────────────────
+function getWorkspaceSettings() {
+  const cfg = vscode.workspace.getConfiguration('codemon');
+  const difficulty = cfg.get('difficulty', 'Normal');
+  const feedTime1 = cfg.get('feedTime1', '09:30');
+  const feedTime2 = cfg.get('feedTime2', '15:30');
+  const hungerDecayRate = cfg.get('hungerDecayRate', 1);
+  const animationSpeed = cfg.get('animationSpeed', 1);
+  
+  const difficultyMult = difficulty === 'Chill' ? { xp: 1.5, decay: 0.7 } : difficulty === 'Hard' ? { xp: 0.7, decay: 1.5 } : { xp: 1, decay: 1 };
+  const finalDecayMult = difficultyMult.decay * hungerDecayRate;
+  
+  return {
+    difficulty,
+    feedTime1,
+    feedTime2,
+    hungerDecayRate,
+    animationSpeed,
+    xpMult: difficultyMult.xp,
+    decayMult: finalDecayMult,
+  };
+}
+
 // ── LANG / HYBRID / EXT DEFINITIONS ──────────────────────────────────────────
 
 const LANG_TRAITS = {
@@ -345,7 +368,8 @@ function setupActivityTracker(context) {
     if (sessionMins > creatureState.longestSessionMinutes) creatureState.longestSessionMinutes = sessionMins;
 
     creatureState.langCounts[lang] = (creatureState.langCounts[lang]||0) + 1;
-    creatureState.xp += 2;
+    const settings = getWorkspaceSettings();
+    creatureState.xp += Math.round(2 * settings.xpMult);
     creatureState.lastActive = Date.now();
 
     recalcDominance(creatureState);
@@ -397,22 +421,28 @@ function setupActivityTracker(context) {
 
 function setupDecayLoop(context) {
   const decay = setInterval(() => {
+    const settings = getWorkspaceSettings();
     const now   = new Date();
     const today = now.toDateString();
     const hm    = now.getHours()*60 + now.getMinutes();
+    
+    const [hm1Str, mm1Str] = settings.feedTime1.split(':');
+    const [hm2Str, mm2Str] = settings.feedTime2.split(':');
+    const feedTime1Mins = parseInt(hm1Str)*60 + parseInt(mm1Str);
+    const feedTime2Mins = parseInt(hm2Str)*60 + parseInt(mm2Str);
 
-    if (hm >= 9*60+30 && creatureState.lastMorningFeedDate !== today) {
+    if (hm >= feedTime1Mins && creatureState.lastMorningFeedDate !== today) {
       creatureState.lastMorningFeedDate = today;
       creatureState.hunger = Math.max(0, creatureState.hunger-50);
       vscode.window.showInformationMessage(`🦎 ${creatureState.name} is hungry — morning feed time.`);
     }
-    if (hm >= 15*60+30 && creatureState.lastAfternoonFeedDate !== today) {
+    if (hm >= feedTime2Mins && creatureState.lastAfternoonFeedDate !== today) {
       creatureState.lastAfternoonFeedDate = today;
       creatureState.hunger = Math.max(0, creatureState.hunger-50);
       vscode.window.showInformationMessage(`🦎 ${creatureState.name} is hungry again — afternoon feed.`);
     }
 
-    creatureState.mood = Math.max(0, creatureState.mood-1);
+    creatureState.mood = Math.max(0, creatureState.mood - settings.decayMult);
     const newAch = checkAchievements(creatureState);
     newAch.forEach(a => vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));
 
@@ -420,13 +450,15 @@ function setupDecayLoop(context) {
     if (creatureState.hunger === 0) {
       if (!creatureState.starvedSince) creatureState.starvedSince = Date.now();
       const starvedMs = Date.now() - creatureState.starvedSince;
-      if (starvedMs >= 60 * 60 * 1000 && !creatureState.isEatingRam) {
+      const starvationThreshold = (60 * 60 * 1000) / settings.decayMult;
+      if (starvedMs >= starvationThreshold && !creatureState.isEatingRam) {
         startEatingRam(context);
       }
-      // Ghost unlock: 72h feral
+      // Ghost unlock: 72h feral (adjusted by decay multiplier)
       if (!creatureState.unlockedGhost && creatureState.isEatingRam && creatureState.feralSince) {
         const feralMs = Date.now() - creatureState.feralSince;
-        if (feralMs >= 72 * 60 * 60 * 1000) {
+        const ghostThreshold = (72 * 60 * 60 * 1000) / settings.decayMult;
+        if (feralMs >= ghostThreshold) {
           creatureState.unlockedGhost = true;
           stopEatingRam();
           vscode.window.showInformationMessage(`👻 ${creatureState.name} has crossed over...`);
@@ -474,8 +506,9 @@ function setupGitWatcher(context) {
     const now = Date.now();
     if (now - lastCommitMs < 2000) return; // debounce: FSW + git API may both fire
     lastCommitMs = now;
+    const settings = getWorkspaceSettings();
     creatureState.totalCommits = (creatureState.totalCommits || 0) + 1;
-    creatureState.xp   += 20;
+    creatureState.xp   += Math.round(20 * settings.xpMult);
     creatureState.mood  = Math.min(100, creatureState.mood + 10);
     if (!creatureState.patternComment) creatureState.patternComment = pickRandom(COMMIT_COMMENTS);
     checkAchievements(creatureState).forEach(a =>
@@ -710,6 +743,7 @@ function buildHolyCCreatureSVG(evoIdx, c, bc, mood, features, foodStr='{;}') {
 // ── HTML ──────────────────────────────────────────────────────────────────────
 
 function refreshWebview(webview, state) {
+  const settings = getWorkspaceSettings();
   renderWebview(webview, state, {
     esc,
     getEvolution,
@@ -725,6 +759,7 @@ function refreshWebview(webview, state) {
     buildCreatureForLang,
     getFoodStr,
     ramGremlinsCount: ramGremlins.length,
+    animationSpeed: settings.animationSpeed,
   });
 }
 
