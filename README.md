@@ -74,6 +74,10 @@ Codemon settings are workspace-scoped (different projects can have different pet
 
 Open VS Code Settings and search for `Codemon`.
 
+## Display
+
+Codemon creatures are designed for dark backgrounds and may display unexpectedly or with poor contrast in VS Code light modes. For the best visual experience, especially with creatures that display in light colors (yellow, cyan, light green), **dark mode is recommended**. If you prefer light mode, you may notice some creature types are less visible or have reduced contrast against the light sidebar background.
+
 ## Installation
 
 1. Copy this folder into your VS Code extensions directory:
