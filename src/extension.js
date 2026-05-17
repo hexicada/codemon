@@ -692,6 +692,12 @@ function activate(context) {
   setupGitWatcher(context);
   setupSystemPollers(context);
   setupSettingsWatcher(context);
+  const openOnStartup = vscode.workspace.getConfiguration('codemon').get('openOnStartup', true);
+  if (openOnStartup) {
+    setTimeout(() => {
+      openCodemonPanel(context);
+    }, 0);
+  }
 }
 
 function saveAndRefresh(context, force=false) {

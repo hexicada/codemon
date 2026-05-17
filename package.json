@@ -77,6 +77,12 @@
           "step": 0.25,
           "description": "Creature animation speed multiplier. 0.5 = half speed, 2 = double speed.",
           "scope": "resource"
+        },
+        "codemon.openOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically open the Codemon panel when VS Code starts.",
+          "scope": "application"
         }
       }
     }
