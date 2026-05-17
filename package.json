@@ -11,7 +11,11 @@
     "commands": [
       {
         "command": "codemon.open",
-        "title": "Codemon: Open Your Creature"
+        "title": "Codemon: Open Creature Panel"
+      },
+      {
+        "command": "codemon.openSettings",
+        "title": "Codemon: Open Settings"
       }
     ],
     "viewsContainers": {

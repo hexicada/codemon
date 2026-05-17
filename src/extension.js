@@ -14,13 +14,31 @@ const { renderWebview } = require('./render');
 const { renderStyles, renderScripts } = require('./webviewAssets');
 
 // ── SETTINGS HELPERS ──────────────────────────────────────────────────────────
+function clamp(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function parseFeedTime(value, fallback) {
+  const src = typeof value === 'string' ? value.trim() : '';
+  const m = src.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+  if (!m) return fallback;
+  return `${m[1].padStart(2, '0')}:${m[2]}`;
+}
+
+function feedTimeToMinutes(hm) {
+  const [h, m] = hm.split(':').map(n => parseInt(n, 10));
+  return h * 60 + m;
+}
+
 function getWorkspaceSettings() {
   const cfg = vscode.workspace.getConfiguration('codemon');
-  const difficulty = cfg.get('difficulty', 'Normal');
-  const feedTime1 = cfg.get('feedTime1', '09:30');
-  const feedTime2 = cfg.get('feedTime2', '15:30');
-  const hungerDecayRate = cfg.get('hungerDecayRate', 1);
-  const animationSpeed = cfg.get('animationSpeed', 1);
+  const difficultyRaw = cfg.get('difficulty', 'Normal');
+  const difficulty = ['Chill', 'Normal', 'Hard'].includes(difficultyRaw) ? difficultyRaw : 'Normal';
+  const feedTime1 = parseFeedTime(cfg.get('feedTime1', '09:30'), '09:30');
+  const feedTime2 = parseFeedTime(cfg.get('feedTime2', '15:30'), '15:30');
+  const hungerDecayRate = clamp(Number(cfg.get('hungerDecayRate', 1)), 0.1, 3);
+  const animationSpeed = clamp(Number(cfg.get('animationSpeed', 1)), 0.5, 2);
   
   const difficultyMult = difficulty === 'Chill' ? { xp: 1.5, decay: 0.7 } : difficulty === 'Hard' ? { xp: 0.7, decay: 1.5 } : { xp: 1, decay: 1 };
   const finalDecayMult = difficultyMult.decay * hungerDecayRate;
@@ -29,6 +47,8 @@ function getWorkspaceSettings() {
     difficulty,
     feedTime1,
     feedTime2,
+    feedTime1Mins: feedTimeToMinutes(feedTime1),
+    feedTime2Mins: feedTimeToMinutes(feedTime2),
     hungerDecayRate,
     animationSpeed,
     xpMult: difficultyMult.xp,
@@ -246,6 +266,7 @@ async function analyzeEnvironment(state) {
 
 // ── ACTIVATE ──────────────────────────────────────────────────────────────────
 
+let sidebar_view_ref = null;
 let panel_ref = null;
 let creatureState = null;
 let ramGremlins = [];
@@ -311,49 +332,87 @@ function stopEatingRam() {
   ]);
 }
 
+function bindWebview(context, webview) {
+  webview.options = {
+    enableScripts: true,
+  };
+  refreshWebview(webview, creatureState);
+
+  let handlers = createHandlers(creatureState, {
+    refresh:         (force) => saveAndRefresh(context, force),
+    stopEatingRam,
+    setChaseRunning: (v) => { chaseRunning = v; },
+    unlockLore,
+    PRESTIGE_NAMES,
+  });
+
+  webview.onDidReceiveMessage(msg => {
+    if (msg.type === 'open_settings') {
+      vscode.commands.executeCommand('codemon.openSettings');
+      return;
+    }
+    if (msg.type === 'slot_switch') {
+      const next = switchSlot(context, creatureState, msg.value);
+      if (next && next !== creatureState) {
+        creatureState = next;
+        // Rebuild handlers bound to the new state object.
+        Object.assign(handlers, createHandlers(creatureState, {
+          refresh:         (force) => saveAndRefresh(context, force),
+          stopEatingRam,
+          setChaseRunning: (v) => { chaseRunning = v; },
+          unlockLore,
+          PRESTIGE_NAMES,
+        }));
+        refreshWebview(webview, creatureState);
+      }
+      return;
+    }
+    if (handlers[msg.type]) handlers[msg.type](msg);
+    const newAch = checkAchievements(creatureState);
+    newAch.forEach(a => vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));
+    saveAndRefresh(context);
+  });
+}
+
+function openCodemonPanel(context) {
+  if (panel_ref) {
+    panel_ref.reveal(vscode.ViewColumn.Beside);
+    return;
+  }
+
+  panel_ref = vscode.window.createWebviewPanel(
+    'codemon.panel.window',
+    'Codemon',
+    vscode.ViewColumn.Beside,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+    }
+  );
+
+  bindWebview(context, panel_ref.webview);
+
+  panel_ref.onDidDispose(() => {
+    panel_ref = null;
+  });
+}
+
 function setupWebviewProvider(context) {
+  context.subscriptions.push(vscode.commands.registerCommand('codemon.openSettings', () => {
+    vscode.commands.executeCommand('workbench.action.openSettings', 'codemon');
+  }));
+
   const provider = {
     resolveWebviewView(webviewView) {
-      panel_ref = webviewView;
-      webviewView.webview.options = {enableScripts:true};
-      refreshWebview(webviewView.webview, creatureState);
-
-      let handlers = createHandlers(creatureState, {
-        refresh:         (force) => saveAndRefresh(context, force),
-        stopEatingRam,
-        setChaseRunning: (v) => { chaseRunning = v; },
-        unlockLore,
-        PRESTIGE_NAMES,
-      });
-
-      webviewView.webview.onDidReceiveMessage(msg => {
-        if (msg.type === 'slot_switch') {
-          const next = switchSlot(context, creatureState, msg.value);
-          if (next && next !== creatureState) {
-            creatureState = next;
-            // Rebuild handlers bound to the new state object
-            Object.assign(handlers, createHandlers(creatureState, {
-              refresh:         (force) => saveAndRefresh(context, force),
-              stopEatingRam,
-              setChaseRunning: (v) => { chaseRunning = v; },
-              unlockLore,
-              PRESTIGE_NAMES,
-            }));
-            refreshWebview(webviewView.webview, creatureState);
-          }
-          return;
-        }
-        if (handlers[msg.type]) handlers[msg.type](msg);
-        const newAch = checkAchievements(creatureState);
-        newAch.forEach(a => vscode.window.showInformationMessage(`🏆 Achievement: ${a.label} — ${a.desc}`));
-        saveAndRefresh(context);
-      });
+      sidebar_view_ref = webviewView;
+      bindWebview(context, webviewView.webview);
     }
   };
 
   context.subscriptions.push(vscode.window.registerWebviewViewProvider('codemon.panel', provider));
-  context.subscriptions.push(vscode.commands.registerCommand('codemon.open', () =>
-    vscode.commands.executeCommand('workbench.view.extension.codemon-sidebar')));
+  context.subscriptions.push(vscode.commands.registerCommand('codemon.open', () => {
+    openCodemonPanel(context);
+  }));
 }
 
 function setupActivityTracker(context) {
@@ -425,18 +484,13 @@ function setupDecayLoop(context) {
     const now   = new Date();
     const today = now.toDateString();
     const hm    = now.getHours()*60 + now.getMinutes();
-    
-    const [hm1Str, mm1Str] = settings.feedTime1.split(':');
-    const [hm2Str, mm2Str] = settings.feedTime2.split(':');
-    const feedTime1Mins = parseInt(hm1Str)*60 + parseInt(mm1Str);
-    const feedTime2Mins = parseInt(hm2Str)*60 + parseInt(mm2Str);
 
-    if (hm >= feedTime1Mins && creatureState.lastMorningFeedDate !== today) {
+    if (hm >= settings.feedTime1Mins && creatureState.lastMorningFeedDate !== today) {
       creatureState.lastMorningFeedDate = today;
       creatureState.hunger = Math.max(0, creatureState.hunger-50);
       vscode.window.showInformationMessage(`🦎 ${creatureState.name} is hungry — morning feed time.`);
     }
-    if (hm >= feedTime2Mins && creatureState.lastAfternoonFeedDate !== today) {
+    if (hm >= settings.feedTime2Mins && creatureState.lastAfternoonFeedDate !== today) {
       creatureState.lastAfternoonFeedDate = today;
       creatureState.hunger = Math.max(0, creatureState.hunger-50);
       vscode.window.showInformationMessage(`🦎 ${creatureState.name} is hungry again — afternoon feed.`);
@@ -617,6 +671,18 @@ function setupSystemPollers(context) {
   context.subscriptions.push({dispose:()=>clearInterval(cpuPoll)});
 }
 
+function setupSettingsWatcher(context) {
+  context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
+    if (!event.affectsConfiguration('codemon')) return;
+    const settings = getWorkspaceSettings();
+    vscode.window.setStatusBarMessage(
+      `Codemon settings applied: ${settings.difficulty}, feed ${settings.feedTime1}/${settings.feedTime2}, anim x${settings.animationSpeed}`,
+      3500
+    );
+    saveAndRefresh(context, true);
+  }));
+}
+
 function activate(context) {
   creatureState = loadState(context);
   setupStatusBar(context);
@@ -625,6 +691,7 @@ function activate(context) {
   setupDecayLoop(context);
   setupGitWatcher(context);
   setupSystemPollers(context);
+  setupSettingsWatcher(context);
 }
 
 function saveAndRefresh(context, force=false) {
@@ -641,9 +708,13 @@ function saveAndRefresh(context, force=false) {
   }
   saveState(context, creatureState);
   if (chaseRunning && !force) return;
+  if (sidebar_view_ref) {
+    try { refreshWebview(sidebar_view_ref.webview, creatureState); }
+    catch (e) { console.error('[codemon] refreshWebview sidebar error:', e); }
+  }
   if (panel_ref) {
     try { refreshWebview(panel_ref.webview, creatureState); }
-    catch (e) { console.error('[codemon] refreshWebview error:', e); }
+    catch (e) { console.error('[codemon] refreshWebview panel error:', e); }
   }
 }
 

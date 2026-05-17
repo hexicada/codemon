@@ -170,36 +170,36 @@ function buildBaseCreatureSVG(evoIdx, c, bc, mood, features, extTraits, dominant
   const archetypeBody = `
     <!-- Bug wings (cicada/bee style) — two pairs, upper larger -->
     <!-- Upper left wing -->
-    <path d="M45.0,61.0 C38.0,54.0 24.0,50.0 18.0,55.0 C13.0,59.0 16.0,68.0 26.0,68.0 C33.0,68.0 40.0,65.0 44.0,63.0 Z"
+    <path class="wing-left wing-upper" d="M45.0,61.0 C38.0,54.0 24.0,50.0 18.0,55.0 C13.0,59.0 16.0,68.0 26.0,68.0 C33.0,68.0 40.0,65.0 44.0,63.0 Z"
       fill="${bc}18" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
     <!-- Upper left wing veins -->
-    <path d="M44.0,62.0 C36.0,59.0 27.0,57.0 20.0,58.0"
+    <path class="wing-left wing-upper" d="M44.0,62.0 C36.0,59.0 27.0,57.0 20.0,58.0"
       fill="none" stroke="${c}" stroke-width="0.70" stroke-linecap="round" stroke-linejoin="round" opacity="0.40"/>
-    <path d="M42.0,64.0 C35.0,63.5 28.0,63.0 22.0,64.5"
+    <path class="wing-left wing-upper" d="M42.0,64.0 C35.0,63.5 28.0,63.0 22.0,64.5"
       fill="none" stroke="${c}" stroke-width="0.60" stroke-linecap="round" stroke-linejoin="round" opacity="0.30"/>
-    <path d="M40.0,61.5 C34.0,57.5 26.0,54.5 19.5,56.5"
+    <path class="wing-left wing-upper" d="M40.0,61.5 C34.0,57.5 26.0,54.5 19.5,56.5"
       fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"/>
     <!-- Upper right wing -->
-    <path d="M55.0,61.0 C62.0,54.0 76.0,50.0 82.0,55.0 C87.0,59.0 84.0,68.0 74.0,68.0 C67.0,68.0 60.0,65.0 56.0,63.0 Z"
+    <path class="wing-right wing-upper" d="M55.0,61.0 C62.0,54.0 76.0,50.0 82.0,55.0 C87.0,59.0 84.0,68.0 74.0,68.0 C67.0,68.0 60.0,65.0 56.0,63.0 Z"
       fill="${bc}18" stroke="${c}" stroke-width="1.40" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>
     <!-- Upper right wing veins -->
-    <path d="M56.0,62.0 C64.0,59.0 73.0,57.0 80.0,58.0"
+    <path class="wing-right wing-upper" d="M56.0,62.0 C64.0,59.0 73.0,57.0 80.0,58.0"
       fill="none" stroke="${c}" stroke-width="0.70" stroke-linecap="round" stroke-linejoin="round" opacity="0.40"/>
-    <path d="M58.0,64.0 C65.0,63.5 72.0,63.0 78.0,64.5"
+    <path class="wing-right wing-upper" d="M58.0,64.0 C65.0,63.5 72.0,63.0 78.0,64.5"
       fill="none" stroke="${c}" stroke-width="0.60" stroke-linecap="round" stroke-linejoin="round" opacity="0.30"/>
-    <path d="M60.0,61.5 C66.0,57.5 74.0,54.5 80.5,56.5"
+    <path class="wing-right wing-upper" d="M60.0,61.5 C66.0,57.5 74.0,54.5 80.5,56.5"
       fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.25"/>
     <!-- Lower left wing (smaller, angled down) -->
-    <path d="M44.5,65.0 C38.0,64.0 27.0,67.0 24.0,73.0 C22.0,77.0 25.5,80.0 32.0,77.0 C37.0,75.0 42.0,70.0 44.5,67.0 Z"
+    <path class="wing-left wing-lower" d="M44.5,65.0 C38.0,64.0 27.0,67.0 24.0,73.0 C22.0,77.0 25.5,80.0 32.0,77.0 C37.0,75.0 42.0,70.0 44.5,67.0 Z"
       fill="${bc}12" stroke="${c}" stroke-width="1.10" stroke-linecap="round" stroke-linejoin="round" opacity="0.70"/>
     <!-- Lower left wing vein -->
-    <path d="M43.5,66.0 C37.0,67.0 29.0,70.5 25.5,75.0"
+    <path class="wing-left wing-lower" d="M43.5,66.0 C37.0,67.0 29.0,70.5 25.5,75.0"
       fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
     <!-- Lower right wing (smaller, angled down) -->
-    <path d="M55.5,65.0 C62.0,64.0 73.0,67.0 76.0,73.0 C78.0,77.0 74.5,80.0 68.0,77.0 C63.0,75.0 58.0,70.0 55.5,67.0 Z"
+    <path class="wing-right wing-lower" d="M55.5,65.0 C62.0,64.0 73.0,67.0 76.0,73.0 C78.0,77.0 74.5,80.0 68.0,77.0 C63.0,75.0 58.0,70.0 55.5,67.0 Z"
       fill="${bc}12" stroke="${c}" stroke-width="1.10" stroke-linecap="round" stroke-linejoin="round" opacity="0.70"/>
     <!-- Lower right wing vein -->
-    <path d="M56.5,66.0 C63.0,67.0 71.0,70.5 74.5,75.0"
+    <path class="wing-right wing-lower" d="M56.5,66.0 C63.0,67.0 71.0,70.5 74.5,75.0"
       fill="none" stroke="${c}" stroke-width="0.55" stroke-linecap="round" stroke-linejoin="round" opacity="0.28"/>
     <!-- Vestigial back arms (left) -->
     <path d="M43.0,62.0 C38.0,63.0 32.0,64.5 29.0,65.0"

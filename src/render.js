@@ -302,6 +302,7 @@ ${styles}</head><body>
   <!-- Actions -->
   <div class="acts"><button onclick="s('feed')">◆ Feed</button><button onclick="s('play')">◈ Pet</button></div>
   <button onclick="openChase()" style="width:100%;margin-top:5px;border-color:${c}44;font-size:9px">⬤ Start Chase</button>
+  <button onclick="s('open_settings')" style="width:100%;margin-top:5px;opacity:0.85">⚙ Settings</button>
   <div id="ng-confirm" style="display:none;background:var(--s);border:1px solid #f4433644;border-radius:4px;padding:8px 10px;font-size:9px;color:var(--d)">
     Retire ${esc(state.name)} and begin a new generation.<br/>One DNA trait will carry forward. Name your successor.
     <div style="display:flex;gap:5px;margin-top:6px">

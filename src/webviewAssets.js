@@ -32,15 +32,22 @@ body{font-family:'Space Mono',monospace;background:var(--bg);color:var(--t);font
 @keyframes flt{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 @keyframes bnc{0%,100%{transform:translateY(0) scale(1)}35%{transform:translateY(-7px) scale(1.04)}}
 @keyframes slp{0%,100%{transform:rotate(-2deg)}50%{transform:translateY(-3px) rotate(2deg)}}
+@keyframes wing-flap-left{0%,100%{transform:rotate(0deg) translateY(0)}50%{transform:rotate(-4deg) translateY(-0.7px)}}
+@keyframes wing-flap-right{0%,100%{transform:rotate(0deg) translateY(0)}50%{transform:rotate(4deg) translateY(-0.7px)}}
 @keyframes eat{0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(-4px) scale(1.06)}40%{transform:translateY(1px) scale(0.97)}60%{transform:translateY(-3px) scale(1.04)}80%{transform:translateY(0) scale(1)}}
 @keyframes food-rise{0%{transform:translateY(0);opacity:0}15%{opacity:1}80%{opacity:1}100%{transform:translateY(-18px);opacity:0}}
 @keyframes burp-pop{0%{transform:scale(0.4) rotate(-8deg);opacity:0}25%{transform:scale(1.15) rotate(4deg);opacity:1}70%{opacity:1}100%{transform:scale(0.9) rotate(-2deg);opacity:0}}
+.wing-left,.wing-right{transform-box:fill-box;animation-duration:${a(2.4)};animation-timing-function:ease-in-out;animation-iteration-count:infinite}
+.wing-left{transform-origin:right center;animation-name:wing-flap-left}
+.wing-right{transform-origin:left center;animation-name:wing-flap-right}
+.wing-lower{animation-duration:${a(2.8)};opacity:0.9}
 .mood-eating .creature-svg{animation:eat ${a(0.4)} ease-in-out 3}
 .eating-food{animation:food-rise ${a(1.2)} ease-out forwards;transform-box:fill-box;transform-origin:center bottom}
 .burp-bubble{position:absolute;top:8px;right:10px;font-family:'VT323',monospace;font-size:18px;color:${c};animation:burp-pop ${a(2)} ease-in-out forwards;pointer-events:none;text-shadow:0 0 8px ${c}88}
 .nom-bubble{position:absolute;top:8px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop ${a(1.8)} ease-in-out forwards;pointer-events:none;opacity:0.85}
 .nomnom-bubble{position:absolute;top:2px;left:10px;font-family:'VT323',monospace;font-size:14px;color:${c};animation:burp-pop ${a(1.8)} ease-in-out forwards;pointer-events:none;opacity:0.85;transform:rotate(7deg)}
 .mood-sleeping .creature-svg,.mood-drowsy .creature-svg{animation:slp ${a(4)} ease-in-out infinite}
+.mood-sleeping .wing-left,.mood-sleeping .wing-right,.mood-drowsy .wing-left,.mood-drowsy .wing-right{animation-play-state:paused}
 .ed{font-size:9px;color:var(--d);line-height:1.5;font-style:italic;text-align:center}
 .dna-toggle{background:none;border:none;color:var(--c);font-family:'VT323',monospace;font-size:16px;letter-spacing:1px;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:4px;width:100%;justify-content:center;border-top:1px solid var(--b);margin-top:4px}
 .dna-toggle:hover{opacity:0.8;background:none}
