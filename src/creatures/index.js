@@ -2,6 +2,7 @@
 
 const { buildGhostCreatureSVG } = require('./ghost');
 const { buildMothCreatureSVG }  = require('./moth');
+const { buildCrabCreatureSVG }  = require('./crab');
 
 // ── Language → creature family map ───────────────────────────────────────────
 // Moth is the current default while other families are developed.
@@ -48,10 +49,11 @@ function buildCreatureForLang(dominantLang, evoIdx, c, bc, mood, features, extTr
   const family = LANG_FAMILY[dominantLang] || 'moth'; // moth is the default
 
   switch (family) {
+    case 'crab':
+      return buildCrabCreatureSVG(evoIdx, c, bc, mood, features, xp, foodStr);
     // Families not yet implemented fall through to moth until their file is built
     case 'moth':
     case 'snake':
-    case 'crab':
     case 'arachnid':
     case 'cat':
     case 'capybara':
