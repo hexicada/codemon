@@ -369,7 +369,7 @@ function buildCrabCreatureSVG(evoIdx, c, bc, mood, features, xp, foodStr = '') {
   const body = stages[Math.min(evoIdx, 5)];
 
   // Feature overlays only on adult stages (4+)
-  const overlays = evoIdx >= 4 ? featureOverlays(features) : '';
+  const overlays = evoIdx >= 4 ? featureOverlays(features, 'crab') : '';
 
   return `<svg class="creature-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">` +
     `<defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="b"/>` +

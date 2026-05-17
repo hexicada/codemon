@@ -1,6 +1,20 @@
 'use strict';
 
-function featureOverlays(features) {
+// ── Feature overlay dispatcher ────────────────────────────────────────────────
+// Pass the creature family so overlays are positioned for that body layout.
+// Unimplemented families fall back to 'base' (old base-creature coordinates).
+function featureOverlays(features, family = 'base') {
+  if (!features || !features.length) return '';
+  switch (family) {
+    case 'moth': return featureOverlaysMoth(features);
+    case 'crab': return featureOverlaysCrab(features);
+    default:     return featureOverlaysBase(features);
+  }
+}
+
+// ── BASE / HolyC / Ghost overlays ─────────────────────────────────────────────
+// Coordinate space: old base creature — head y≈35-58, body y≈60-80, arms y≈59-64
+function featureOverlaysBase(features) {
   const ids = features.map(f=>f.featureId);
   const out = [];
   const scaleColor = ids.includes('hybrid_ironscale')?'#8b7f6f':ids.includes('hybrid_datascale')?'#5ba0c8':ids.includes('hybrid_scale_spark')?'#a8d8a8':ids.includes('hybrid_moonscale')?'#b8c4e8':ids.includes('hybrid_analyst')?'#4e9af1':'#4b8bbe';
@@ -42,6 +56,97 @@ function featureOverlays(features) {
   if (ids.includes('crystal_wings')) out.push(`<polygon class="wing-left wing-upper" points="28,50 16,42 20,54 14,60 26,58" fill="#cc342d15" stroke="#cc342d" stroke-width="0.8"/><polygon class="wing-right wing-upper" points="72,50 84,42 80,54 86,60 74,58" fill="#cc342d15" stroke="#cc342d" stroke-width="0.8"/>`);
   if (ids.includes('void_shimmer')||ids.includes('hybrid_voidarc')) out.push(`<circle cx="50" cy="50" r="24" fill="none" stroke="#5e5086" stroke-width="0.6" stroke-dasharray="2,6" opacity="0.4"/>`);
   if (ids.includes('template_tail')) out.push(`<line x1="50" y1="80" x2="50" y2="87" stroke="#f34b7d" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="87" x2="44" y2="95" stroke="#f34b7d" stroke-width="1" stroke-linecap="round"/><line x1="50" y1="87" x2="56" y2="95" stroke="#f34b7d" stroke-width="1" stroke-linecap="round"/>`);
+  return out.join('\n');
+}
+
+// ── MOTH overlays ─────────────────────────────────────────────────────────────
+// Coordinate space: elongated body cx=50 cy=52 rx=7.5 ry=18; wings x≈17-83;
+// head cy≈39 r≈7.5; abdomen bottom ≈y=70; legs from body edge to x=32/68.
+// Primary language: Lua (lunar_glow, table_shell, metatail, coroutine_fins).
+// Non-Lua traits that bleed in from secondary languages are silently omitted.
+function featureOverlaysMoth(features) {
+  const ids = features.map(f => f.featureId);
+  const out = [];
+
+  // ── Lua traits ──────────────────────────────────────────────────────────────
+  // lunar_glow / hybrid_moonscale: wide aura enclosing the whole wingspan
+  if (ids.includes('lunar_glow') || ids.includes('hybrid_moonscale'))
+    out.push(`<ellipse cx="50" cy="52" rx="46" ry="36" fill="none" stroke="#7b86b8" stroke-width="0.55" stroke-dasharray="4,6" opacity="0.38"/>`);
+
+  // table_shell: rectangular segment markings on the abdomen
+  if (ids.includes('table_shell'))
+    out.push(`<g opacity="0.38" stroke="#7b86b8" stroke-width="0.65" fill="#7b86b811"><rect x="43" y="45" width="14" height="6" rx="1"/><rect x="43" y="53" width="14" height="6" rx="1"/><rect x="44" y="61" width="12" height="5" rx="1"/></g>`);
+
+  // metatail: forked tail at the base of the abdomen (y≈70)
+  if (ids.includes('metatail') || ids.includes('forked_tongue'))
+    out.push(`<line x1="50" y1="70" x2="50" y2="78" stroke="#7b86b8" stroke-width="1.2" stroke-linecap="round"/><line x1="50" y1="76" x2="44" y2="84" stroke="#7b86b8" stroke-width="1.1" stroke-linecap="round"/><line x1="50" y1="76" x2="56" y2="84" stroke="#7b86b8" stroke-width="1.1" stroke-linecap="round"/>`);
+
+  // coroutine_fins: trailing filaments off the lower wing tips
+  if (ids.includes('coroutine_fins'))
+    out.push(`<path d="M36,72 C28,76 24,82 27,86" fill="none" stroke="#7b86b8" stroke-width="1.0" stroke-linecap="round" opacity="0.75"/><path d="M64,72 C72,76 76,82 73,86" fill="none" stroke="#7b86b8" stroke-width="1.0" stroke-linecap="round" opacity="0.75"/>`);
+
+  // ── Haskell / void traits (may appear on moth as secondary-language unlocks) ─
+  if (ids.includes('void_shimmer') || ids.includes('hybrid_voidarc'))
+    out.push(`<circle cx="50" cy="52" r="26" fill="none" stroke="#5e5086" stroke-width="0.6" stroke-dasharray="2,6" opacity="0.40"/>`);
+
+  if (ids.includes('monad_rings') || ids.includes('category_wings'))
+    out.push(`<ellipse cx="50" cy="52" rx="30" ry="10" fill="none" stroke="#5e5086" stroke-width="0.8" stroke-dasharray="3,2" opacity="0.50" transform="rotate(-20,50,52)"/><ellipse cx="50" cy="52" rx="36" ry="12" fill="none" stroke="#c792ea" stroke-width="0.6" stroke-dasharray="2,3" opacity="0.32" transform="rotate(20,50,52)"/>`);
+
+  if (ids.includes('lambda_mark'))
+    out.push(`<text x="46" y="32" font-size="10" fill="#c792ea" font-family="monospace" opacity="0.9">λ</text>`);
+
+  if (ids.includes('halo'))
+    out.push(`<ellipse cx="50" cy="26" rx="17" ry="4" fill="none" stroke="#93c5fd" stroke-width="1.2" opacity="0.8"/>`);
+
+  return out.join('\n');
+}
+
+// ── CRAB overlays ─────────────────────────────────────────────────────────────
+// Coordinate space (stage 4): carapace oval x=28-72 y=24-68, center ≈(50,46);
+// eye stalks x=40,60 y=30-38; left claw palm x≈14 y≈39; right x≈86 y≈39.
+// Stage 5 carapace is wider (x=23-77 y=18-74) — overlays are tuned to the midpoint.
+// Primary language: Rust (rust_flecks, iron_plates, claws, exoskeleton).
+function featureOverlaysCrab(features) {
+  const ids = features.map(f => f.featureId);
+  const out = [];
+
+  // ── Rust traits ─────────────────────────────────────────────────────────────
+  // rust_flecks: oxidation spots scattered across the carapace surface
+  if (ids.includes('rust_flecks'))
+    out.push(`<g opacity="0.58"><circle cx="43" cy="33" r="0.55" fill="#7a3424"/><circle cx="50" cy="30" r="0.42" fill="#a24a2c"/><circle cx="57" cy="33" r="0.48" fill="#7a3424"/><circle cx="41" cy="42" r="0.50" fill="#a24a2c"/><circle cx="50" cy="46" r="0.56" fill="#7a3424"/><circle cx="59" cy="41" r="0.44" fill="#a24a2c"/><circle cx="44" cy="55" r="0.47" fill="#7a3424"/><circle cx="56" cy="57" r="0.43" fill="#a24a2c"/><circle cx="50" cy="62" r="0.50" fill="#7a3424"/><circle cx="38" cy="51" r="0.40" fill="#cb6a3a"/><circle cx="62" cy="52" r="0.44" fill="#7a3424"/></g>`);
+
+  // iron_plates: reinforcing armor bands across the carapace
+  if (ids.includes('iron_plates') || ids.includes('exoskeleton') || ids.includes('hybrid_ironscale') || ids.includes('hybrid_flameirn')) {
+    const ic = ids.includes('hybrid_flameirn') ? '#e06030' : '#ce422b';
+    out.push(`<path d="M36,36 C44,33 56,33 64,36" fill="none" stroke="${ic}" stroke-width="1.0" opacity="0.50" stroke-linecap="round"/><path d="M33,47 C42,44 58,44 67,47" fill="none" stroke="${ic}" stroke-width="1.0" opacity="0.50" stroke-linecap="round"/><path d="M34,58 C42,55 58,55 66,58" fill="none" stroke="${ic}" stroke-width="0.9" opacity="0.45" stroke-linecap="round"/>`);
+  }
+
+  // claws / exoskeleton: reinforced fingertip lines on the claw palms
+  if (ids.includes('claws') || ids.includes('exoskeleton')) {
+    out.push(
+      // Left palm tines
+      `<line x1="10" y1="36" x2="6" y2="30" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>` +
+      `<line x1="10" y1="41" x2="5" y2="43" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>` +
+      // Right palm tines
+      `<line x1="90" y1="36" x2="94" y2="30" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>` +
+      `<line x1="90" y1="41" x2="95" y2="43" stroke="#ce422b" stroke-width="1.5" stroke-linecap="round"/>`
+    );
+  }
+
+  // exoskeleton: also adds outer carapace highlight and eye-stalk armor rings
+  if (ids.includes('exoskeleton'))
+    out.push(`<ellipse cx="50" cy="46" rx="22" ry="22" fill="none" stroke="#ce422b" stroke-width="0.6" stroke-dasharray="3,3" opacity="0.30"/><rect x="38" y="28" width="4" height="10" rx="2" fill="none" stroke="#ce422b" stroke-width="0.7" opacity="0.45"/><rect x="58" y="28" width="4" height="10" rx="2" fill="none" stroke="#ce422b" stroke-width="0.7" opacity="0.45"/>`);
+
+  // ── Generic aura/radial traits that bleed in from secondary languages ────────
+  if (ids.includes('void_shimmer') || ids.includes('hybrid_voidarc'))
+    out.push(`<circle cx="50" cy="46" r="26" fill="none" stroke="#5e5086" stroke-width="0.6" stroke-dasharray="2,6" opacity="0.38"/>`);
+
+  if (ids.includes('lunar_glow') || ids.includes('hybrid_moonscale'))
+    out.push(`<circle cx="50" cy="46" r="30" fill="none" stroke="#7b86b8" stroke-width="0.5" stroke-dasharray="4,5" opacity="0.32"/>`);
+
+  if (ids.includes('stream_lines'))
+    out.push(`<path d="M30,38 Q50,34 70,38" fill="none" stroke="#00add8" stroke-width="0.7" opacity="0.40"/><path d="M28,47 Q50,43 72,47" fill="none" stroke="#00add8" stroke-width="0.7" opacity="0.32"/><path d="M30,58 Q50,54 70,58" fill="none" stroke="#00add8" stroke-width="0.65" opacity="0.24"/>`);
+
   return out.join('\n');
 }
 
