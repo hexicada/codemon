@@ -104,7 +104,7 @@ const EXT_TRAITS = {
 };
 
 const EVOLUTIONS = [
-  {name:'Eggling',    minXP:0,    description:'Freshly hatched. Watches you code with wide eyes.'},
+  {name:'Eggling',    minXP:0,    description:'We are like eggs at present. You cannot go on being an ordinary, decent egg indefinitely. You must hatch or go bad. - C.S. Lewis'},
   {name:'Glitchling', minXP:400,  description:'Flickering with potential. Keep coding to see your creature evolve.'},
   {name:'Codespawn',  minXP:1200, description:'Try a debug challenge to help your creature grow.'},
   {name:'Synthecyst', minXP:3000, description:'Your creature mirrors your stack.'},

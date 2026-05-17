@@ -226,6 +226,7 @@ function renderWebview(webview, state, deps) {
 
   const shared = { esc, getEvolution, EVOLUTIONS, LANG_TRAITS, HYBRIDS, ACHIEVEMENTS, LORE_ENTRIES };
   const { evo, evoIdx, mood, nextEvo, xpPct, c, bc, moodEmoji, topLangs, currentHybrid, totalEdits, hasStartedCoding, isHolyC } = computeRenderState(state, shared);
+  const showCreatureArt = hasStartedCoding || state.unlockedGhost || evoIdx === 0;
   const hint = renderHints(state, c, shared);
   const puzzleHtml = renderPuzzle(state, c, shared);
   const codexHtml = renderCodex(state, c, shared);
@@ -250,10 +251,10 @@ function renderWebview(webview, state, deps) {
       }).join('')
     : '';
 
-  const rawChaseSvg = (hasStartedCoding || state.unlockedGhost)
+  const rawChaseSvg = showCreatureArt
     ? (isHolyC
         ? buildHolyCCreatureSVG(evoIdx, c, bc, 'happy', state.unlockedFeatures, '')
-        : buildCreatureForLang(state.dominantLang, evoIdx, c, bc, 'happy', state.unlockedFeatures, state.installedExtTraits, '', state.unlockedGhost))
+        : buildCreatureForLang(state.dominantLang, evoIdx, c, bc, 'happy', state.unlockedFeatures, state.installedExtTraits, '', state.unlockedGhost, state.xp))
     : buildEggSVG(state.installedExtTraits, c);
   const chaseSvg = rawChaseSvg.replace('<svg class="creature-svg"', '<svg id="chase-creature"');
 
@@ -269,7 +270,7 @@ ${styles}</head><body>
   <div class="hdr">
     <div>
       <div class="nm" onclick="tr()" title="click to rename">${esc(state.name)}</div>
-      <div class="es">${hasStartedCoding ? evo.name : 'egg'}${state.generation > 0 ? ` <span style="opacity:0.5">[gen ${state.generation + 1}]</span>` : ''}</div>
+      <div class="es">${showCreatureArt ? evo.name : 'egg'}${state.generation > 0 ? ` <span style="opacity:0.5">[gen ${state.generation + 1}]</span>` : ''}</div>
       ${state.inheritedFrom ? `<div style="font-size:8px;color:var(--d);margin-top:1px">descended from ${esc(state.inheritedFrom)}</div>` : ''}
     </div>
     <div style="text-align:right"><div class="me">${moodEmoji}</div><div class="mw">${mood}</div></div>
@@ -279,11 +280,11 @@ ${styles}</head><body>
   <!-- Creature -->
   <div class="cf">
     <div class="speech-bubble-wrap" style="${state.patternComment ? 'min-height:52px' : ''}">` + (state.patternComment && !state._eating && !state._nomnom && !state._burping ? `<div class="speech-bubble"><button class="dismiss-btn" onclick="s('dismiss_comment')">✕</button><div class="bubble-name">${esc(state.name)}:</div>${esc(state.patternComment)}</div>` : '') + `</div>
-    ${(hasStartedCoding || state.unlockedGhost) ? (isHolyC ? buildHolyCCreatureSVG(evoIdx, c, bc, mood, state.unlockedFeatures, getFoodStr(state)) : buildCreatureForLang(state.dominantLang, evoIdx, c, bc, mood, state.unlockedFeatures, state.installedExtTraits, getFoodStr(state), state.unlockedGhost)) : buildEggSVG(state.installedExtTraits, c)}
+    ${showCreatureArt ? (isHolyC ? buildHolyCCreatureSVG(evoIdx, c, bc, mood, state.unlockedFeatures, getFoodStr(state)) : buildCreatureForLang(state.dominantLang, evoIdx, c, bc, mood, state.unlockedFeatures, state.installedExtTraits, getFoodStr(state), state.unlockedGhost, state.xp)) : buildEggSVG(state.installedExtTraits, c)}
     ${state._burping ? `<div class="burp-bubble">*bwooorp*</div>` : ''}
     ${state._nomnom ? `<div class="${Math.random() < 0.5 ? 'nom-bubble' : 'nomnom-bubble'}">${Math.random() < 0.5 ? '*nom*' : '*nomnom*'}</div>` : ''}
     ${hasStartedCoding && featBadges ? `<button class="dna-toggle" data-key="dna" onclick="toggleDna(this)" aria-expanded="false"><i class="arr">▸</i>dna traits (${state.unlockedFeatures.length})</button><div class="dna-drawer">${featBadges}</div>` : ''}
-    <div class="ed">${hasStartedCoding ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
+    <div class="ed">${showCreatureArt ? evo.description : 'Something stirs inside. Start coding to hatch your creature.'}</div>
   </div>
 
   ${hybridBox}
